@@ -15,6 +15,10 @@
  */
 
 function CPU_65816() {
+  // Instruction & Instruction details to print 
+  this.instruction;
+  this.instruction_details;
+  this.instruction_translate;
   // Registers
   this.r = {
     a:0,     // Accumulator
@@ -44,6 +48,9 @@ function CPU_65816() {
   this.INTERRUPT = { NO_INTERRUPT: 0, NMI: 1, RESET: 2, ABORT: 3, COP: 4, IRQ: 5, BRK: 6 };
 
   this.interrupt = this.INTERRUPT.NO_INTERRUPT;
+ 
+  // This is used to keep the cpu going if started with start().
+  this.executing = false;
 
   // This is set by the WAI operation to stop execution until an interrupt
   // is received.
@@ -245,126 +252,162 @@ function CPU_65816() {
                       0x9a : TXS, 0xba : TSX, 0x42: WDM, 0xcb : WAI,
                       0xdb : STP };
 
+  
+  /**
+   * Load given program into memory and prepare for execution.
+   */ 
+  this.load_program = function(raw_hex, has_header) {
+    this.mmu.load_rom(raw_hex);
+    this.r.pc = 0x8000;
+
+    // Skip the header(the first 512 bytes) if there is one present for now.
+    if(has_header) {
+      this.r.pc += 4096;
+    }
+  };
+
   /**
    * Take a raw hex string representing the program and execute it.
    */
   this.execute = function(raw_hex, has_header) {
-    this.mmu.load_rom(raw_hex);
-    this.r.pc = 0x8000;
+    this.load_program(raw_hex, has_header);
+    this.start(); 
+  };
+  
+  /**
+   * Step through the processing of a single byte from the current location of
+   * the program counter.
+   * TODO: Refactor the code to only process a single byte per step call
+   */  
+  this.step = function() {
+    if(this.interrupt&&(!this.p.i|(this.interrupt===this.INTERRUPT.NMI))) {
+      // Load the related interrupt vector in page 0xff of bank zero.
+      if(!this.p.e) {
+        this.mmu.push_byte(this.r.k); 
+      }
+      this.mmu.push_byte(this.r.pc>>8);
+      this.mmu.push_byte(this.r.pc&0xff);
+      var p_byte = (this.p.n<<7)|(this.p.v<<6)|(this.p.m<<5)|(this.p.x<<4)|
+                   (this.p.d<<3)|(this.p.i<<2)|(this.p.z<<1)|this.p.c;
+      this.mmu.push_byte(p_byte);
+      if(!this.p.e) 
+        this.p.d = 0;
+      this.p.i = 1;
+      this.r.k = 0;
+       
+      // Look for where to jump to for the interrupt.  
+      if(this.p.e) {
+        // NMI
+        if(this.interrupt===this.INTERRUPT.NMI) {
+          var low_byte = this.mmu.read_byte_long(0xfffa, 0);
+          var high_byte = this.mmu.read_byte_long(0xfffb, 0);  
+          this.r.pc = (high_byte<<8)|low_byte;
+        // RESET
+        } else if(this.interrupt===this.INTERRUPT.RESET) {
+          var low_byte = this.mmu.read_byte_long(0xfffc, 0);
+          var high_byte = this.mmu.read_byte_long(0xfffd, 0);  
+          this.r.pc = (high_byte<<8)|low_byte;
+        // ABORT
+        } else if(this.interrupt===this.INTERRUPT.ABORT) {
+          var low_byte = this.mmu.read_byte_long(0xfff8, 0);
+          var high_byte = this.mmu.read_byte_long(0xfff9, 0);  
+          this.r.pc = (high_byte<<8)|low_byte;
+        // COP
+        } else if(this.interrupt===this.INTERRUPT.COP) {
+          var low_byte = this.mmu.read_byte_long(0xfff4, 0);
+          var high_byte = this.mmu.read_byte_long(0xfff5, 0);  
+          this.r.pc = (high_byte<<8)|low_byte;
+        // IRQ or BRK
+        } else if(this.interrupt===this.INTERRUPT.IRQ |
+                  this.interrupt==this.INTERRUPT.BRK) {
+          var low_byte = this.mmu.read_byte_long(0xfffe, 0);
+          var high_byte = this.mmu.read_byte_long(0xffff, 0);  
+          this.r.pc = (high_byte<<8)|low_byte;
+        }
+      } else {
+        // NMI
+        if(this.interrupt===this.INTERRUPT.NMI) {
+          var low_byte = this.mmu.read_byte_long(0xffea, 0);
+          var high_byte = this.mmu.read_byte_long(0xffeb, 0);  
+          this.r.pc = (high_byte<<8)|low_byte;
+        // ABORT
+        } else if(this.interrupt===this.INTERRUPT.ABORT) {
+          var low_byte = this.mmu.read_byte_long(0xffe8, 0);
+          var high_byte = this.mmu.read_byte_long(0xffe9, 0);  
+          this.r.pc = (high_byte<<8)|low_byte;
+        // COP
+        } else if(this.interrupt===this.INTERRUPT_COP) {
+          var low_byte = this.mmu.read_byte_long(0xffe4, 0);
+          var high_byte = this.mmu.read_byte_long(0xffe5, 0);  
+          this.r.pc = (high_byte<<8)|low_byte;
+        // IRQ
+        } else if(this.interrupt===this.INTERRUPT.IRQ) {
+          var low_byte = this.mmu.read_byte_long(0xffee, 0);
+          var high_byte = this.mmu.read_byte_long(0xffef, 0);  
+          this.r.pc = (high_byte<<8)|low_byte;
+        // BRK
+        } else if(this.interrupt===this.INTERRUPT.BRK) {
+          var low_byte = this.mmu.read_byte_long(0xffe6, 0);
+          var high_byte = this.mmu.read_byte_long(0xffe7, 0);  
+          this.r.pc = (high_byte<<8)|low_byte;
+        }
+      }
+
+      this.interrupt = this.INTERRUPT.NO_INTERRUPT;
+    }
  
-    if(has_header) {
-      this.r.pc += 4096;
+    var b = this.mmu.read_byte_long(this.r.pc, this.r.k); 
+    this.r.pc++;
+
+    // If we reach the end of the code then stop everything.
+    if(b==null) {
+      this.executing = false;
+      return;
     }
 
-    this.start(); 
+    var operation = this.opcode_map[b];
+    this.instruction = b.toString(16);
+    // Check if unsupported opcode.
+    if(operation==null) {
+      this.executing = false;
+      this.instruction_details="Operation null";
+      return;
+    }
+    this.instruction_translate = operation.toString();
+    var bytes_required = operation.bytes_required(this);
+    this.instruction_details = bytes_required + " bytes read"
+    if(bytes_required===1) {
+      operation.execute(this);
+    } else {
+      var bytes = [];
+      for(var i = 1; i < bytes_required; i++) {
+        var tmpByte = this.mmu.read_byte_long(this.r.pc, this.r.k)
+        bytes.push(tmpByte);
+        this.instruction += " " + tmpByte.toString(16);
+        this.r.pc++;
+      }
+      operation.execute(this,bytes);
+    }
+
+    if(this.waiting||this.stopped) 
+      this.executing = false;
   };
 
   this.start = function() {
-    var executing = true;
-    while(executing) {
-      if(this.interrupt&&(!this.p.i|(this.interrupt===this.INTERRUPT.NMI))) {
-        // Load the related interrupt vector in page 0xff of bank zero.
-        if(!this.p.e) {
-          this.mmu.push_byte(this.r.k); 
-        }
-        this.mmu.push_byte(this.r.pc>>8);
-        this.mmu.push_byte(this.r.pc&0xff);
-        var p_byte = (this.p.n<<7)|(this.p.v<<6)|(this.p.m<<5)|(this.p.x<<4)|
-                    (this.p.d<<3)|(this.p.i<<2)|(this.p.z<<1)|this.p.c;
-        this.mmu.push_byte(p_byte);
-        if(!this.p.e) 
-          this.p.d = 0;
-        this.p.i = 1;
-        this.r.k = 0;
-       
-        // Look for where to jump to for the interrupt.  
-        if(this.p.e) {
-          // NMI
-          if(this.interrupt===this.INTERRUPT.NMI) {
-            var low_byte = this.mmu.read_byte_long(0xfffa, 0);
-            var high_byte = this.mmu.read_byte_long(0xfffb, 0);  
-            this.r.pc = (high_byte<<8)|low_byte;
-          // RESET
-          } else if(this.interrupt===this.INTERRUPT.RESET) {
-            var low_byte = this.mmu.read_byte_long(0xfffc, 0);
-            var high_byte = this.mmu.read_byte_long(0xfffd, 0);  
-            this.r.pc = (high_byte<<8)|low_byte;
-          // ABORT
-          } else if(this.interrupt===this.INTERRUPT.ABORT) {
-            var low_byte = this.mmu.read_byte_long(0xfff8, 0);
-            var high_byte = this.mmu.read_byte_long(0xfff9, 0);  
-            this.r.pc = (high_byte<<8)|low_byte;
-          // COP
-          } else if(this.interrupt===this.INTERRUPT.COP) {
-            var low_byte = this.mmu.read_byte_long(0xfff4, 0);
-            var high_byte = this.mmu.read_byte_long(0xfff5, 0);  
-            this.r.pc = (high_byte<<8)|low_byte;
-          // IRQ or BRK
-          } else if(this.interrupt===this.INTERRUPT.IRQ |
-                    this.interrupt==this.INTERRUPT.BRK) {
-            var low_byte = this.mmu.read_byte_long(0xfffe, 0);
-            var high_byte = this.mmu.read_byte_long(0xffff, 0);  
-            this.r.pc = (high_byte<<8)|low_byte;
-          }
-        } else {
-          // NMI
-          if(this.interrupt===this.INTERRUPT.NMI) {
-            var low_byte = this.mmu.read_byte_long(0xffea, 0);
-            var high_byte = this.mmu.read_byte_long(0xffeb, 0);  
-            this.r.pc = (high_byte<<8)|low_byte;
-          // ABORT
-          } else if(this.interrupt===this.INTERRUPT.ABORT) {
-            var low_byte = this.mmu.read_byte_long(0xffe8, 0);
-            var high_byte = this.mmu.read_byte_long(0xffe9, 0);  
-            this.r.pc = (high_byte<<8)|low_byte;
-          // COP
-          } else if(this.interrupt===this.INTERRUPT_COP) {
-            var low_byte = this.mmu.read_byte_long(0xffe4, 0);
-            var high_byte = this.mmu.read_byte_long(0xffe5, 0);  
-            this.r.pc = (high_byte<<8)|low_byte;
-          // IRQ
-          } else if(this.interrupt===this.INTERRUPT.IRQ) {
-            var low_byte = this.mmu.read_byte_long(0xffee, 0);
-            var high_byte = this.mmu.read_byte_long(0xffef, 0);  
-            this.r.pc = (high_byte<<8)|low_byte;
-          // BRK
-          } else if(this.interrupt===this.INTERRUPT.BRK) {
-            var low_byte = this.mmu.read_byte_long(0xffe6, 0);
-            var high_byte = this.mmu.read_byte_long(0xffe7, 0);  
-            this.r.pc = (high_byte<<8)|low_byte;
-          }
-        }
-
-        this.interrupt = this.INTERRUPT.NO_INTERRUPT;
-      }
- 
-      var b = this.mmu.read_byte_long(this.r.pc, this.r.k); 
-      this.r.pc++;
-
-      // If we reach the end of the code then stop everything.
-      if(b==null) {
-        break;
-      }
-      var operation = this.opcode_map[b];
-      // Check if unsupported opcode.
-      if(operation==null) {
-        break;
-      }
-      var bytes_required = operation.bytes_required(this);
-      if(bytes_required===1) {
-        operation.execute(this);
-      } else {
-        var bytes = [];
-        for(var i = 1; i < bytes_required; i++) {
-          bytes.push(this.mmu.read_byte_long(this.r.pc, this.r.k));
-          this.r.pc++;
-        }
-        operation.execute(this,bytes);
-      }
-
-      if(this.waiting||this.stopped) 
-        executing = false;
+    this.executing = true;
+    while(this.executing) {
+       this.step();
     }
+  }; 
+
+  this.reset = function() {
+    this.executing = false;
+    this.waiting = false;
+    this.stopped = false;
+    this.interrupt = this.INTERRUPT.NO_INTERRUPT;
+    this.r = { a:0, b:0, x:0, y:0, d:0, s:0xff, pc:0, dbr:0, k:0 };
+    this.p = { e:1, c:0, z:0, i:0, d:0, x:0, m:0, v:0, n:0 };
+    this.mmu.reset();  
   }; 
 }
 
@@ -372,6 +415,11 @@ var MMU = {
   cpu: {},
   memory: { 0: {} },
   memory_mapped_io_devices: {},
+
+  reset: function() {
+    this.memory ={ 0: {} };
+    this.memory_mapped_io_devices = {};
+  },
 
   add_memory_mapped_io_device: function(write_callback, read_callback, bank, 
                                         location) {
@@ -397,7 +445,7 @@ var MMU = {
   push_byte: function(b) {
     if(this.cpu.p.e) {
       if(this.cpu.r.s===0) {
-	this.store_byte(0x100, b);
+  this.store_byte(0x100, b);
         this.cpu.r.s = 0xff;
       } else {
         this.store_byte((0x100|(this.cpu.r.s--)), b);
@@ -468,6 +516,7 @@ var MMU = {
 };
 
 var STP = {
+  toString: function() { return "STP" },
   bytes_required:function() {
     return 1;
   },
@@ -477,6 +526,7 @@ var STP = {
 };
 
 var WAI = {
+  toString: function() { return "WAI" },
   bytes_required:function() {
     return 1; 
   },
@@ -486,6 +536,7 @@ var WAI = {
 };
 
 var WDM = {
+  toString: function() { return "WDM" },
   bytes_required:function() {
     return 2;
   },
@@ -493,6 +544,7 @@ var WDM = {
 };
 
 var TXS = {
+  toString: function() { return "TXS" },
   bytes_required:function() {
     return 1;
   },
@@ -512,6 +564,7 @@ var TXS = {
 };
 
 var TSX = {
+  toString: function() { return "TSX" },
   bytes_required:function() {
     return 1;
   },
@@ -532,6 +585,7 @@ var TSX = {
 };
 
 var TRB_absolute = {
+  toString: function() { return "TRB" },
   bytes_required:function() {
     return 3;
   },
@@ -564,6 +618,7 @@ var TRB_absolute = {
 };
 
 var TRB_direct_page = {
+  toString: function() { return "TRB" },
   bytes_required:function() {
     return 2;
   },
@@ -597,6 +652,7 @@ var TRB_direct_page = {
 };
 
 var TSB_absolute = {
+  toString: function() { return "TSB" },
   bytes_required:function() {
     return 3;
   },
@@ -629,6 +685,7 @@ var TSB_absolute = {
 };
 
 var TSB_direct_page = {
+  toString: function() { return "TSB" },
   bytes_required:function() {
     return 2;
   },
@@ -661,6 +718,7 @@ var TSB_direct_page = {
 };
 
 var BIT_const = {
+  toString: function() { return "BIT" },
   bytes_required:function(cpu) {
     if(cpu.p.e|cpu.p.m)
       return 2;
@@ -689,6 +747,7 @@ var BIT_const = {
 };
 
 var BIT_absolute = {
+  toString: function() { return "BIT" },
   bytes_required:function() {
     return 3;
   },
@@ -705,6 +764,7 @@ var BIT_absolute = {
 };
 
 var BIT_direct_page = {
+  toString: function() { return "BIT" },
    bytes_required:function() {
     return 2;
   },
@@ -721,6 +781,7 @@ var BIT_direct_page = {
 };
 
 var BIT_direct_page_indexed_x = {
+  toString: function() { return "BIT" },
   bytes_required:function() {
     return 2;
   },
@@ -755,6 +816,7 @@ var BIT_direct_page_indexed_x = {
 };
 
 var BIT_absolute_indexed_x = {
+  toString: function() { return "BIT" },
   bytes_required:function() {
     return 3;
   },
@@ -767,6 +829,7 @@ var BIT_absolute_indexed_x = {
 };
 
 var COP = {
+  toString: function() { return "COP" },
   bytes_required:function() {
     return 2;
   },
@@ -776,6 +839,7 @@ var COP = {
 };
 
 var BRK = {
+  toString: function() { return "BRK" },
   bytes_required:function() {
     return 2;
   },
@@ -787,6 +851,7 @@ var BRK = {
 };
 
 var RTI = {
+  toString: function() { return "RTI" },
   bytes_required:function() {
     return 1;
   },
@@ -814,6 +879,7 @@ var RTI = {
 // MVN is a really weird instruction, until the accumulator underflows MVN
 // will keep decrementing the program counter to have it continue to execute.
 var MVN = {
+  toString: function() { return "MVN" },
   bytes_required:function() {
     return 3;
   },
@@ -851,6 +917,7 @@ var MVN = {
 // MVP is a really weird instruction, until the accumulator reaches $FFFF MVP
 // will keep decrementing the program counter to have it continue to execute.
 var MVP = {
+  toString: function() { return "MVP" },
   bytes_required:function() {
     return 3;
   },
@@ -896,6 +963,7 @@ var MVP = {
 };
 
 var JSL = {
+  toString: function() { return "JSL" },
   bytes_required:function() {
     return 4;
   },
@@ -912,6 +980,7 @@ var JSL = {
 };
 
 var RTL = {
+  toString: function() { return "RTL" },
   bytes_required:function() {
     return 1;
   },
@@ -924,6 +993,7 @@ var RTL = {
 };
 
 var JSR = {
+  toString: function() { return "JSR" },
   bytes_required:function() {
     return 3;
   },
@@ -938,6 +1008,7 @@ var JSR = {
 };
 
 var JSR_absolute_indexed_x_indirect = {
+  toString: function() { return "JSR" },
   bytes_required:function() {
     return 3;
   },
@@ -966,6 +1037,7 @@ var JSR_absolute_indexed_x_indirect = {
 };
 
 var RTS = {
+  toString: function() { return "RTS" },
   bytes_required:function() {
     return 1;
   },
@@ -977,6 +1049,7 @@ var RTS = {
 };
 
 var PER = {
+  toString: function() { return "PER" },
   bytes_required:function() {
     return 3;
   },
@@ -990,6 +1063,7 @@ var PER = {
 };
 
 var PHK = {
+  toString: function() { return "PHK" },
   bytes_required:function() {
     return 1;
   },
@@ -999,6 +1073,7 @@ var PHK = {
 };
 
 var PHD = {
+  toString: function() { return "PHD" },
   bytes_required:function() {
     return 1;
   },
@@ -1011,6 +1086,7 @@ var PHD = {
 };
 
 var PLD = {
+  toString: function() { return "PLD" },
   bytes_required:function() {
     return 1;
   },
@@ -1030,6 +1106,7 @@ var PLD = {
 };
 
 var PHB = {
+  toString: function() { return "PHB" },
   bytes_required:function() {
     return 1;
   },
@@ -1039,6 +1116,7 @@ var PHB = {
 };
 
 var PLB = {
+  toString: function() { return "PLB" },
    bytes_required:function() {
     return 1;
   },
@@ -1054,6 +1132,7 @@ var PLB = {
 };
 
 var PEA = {
+  toString: function() { return "PEA" },
   bytes_required:function() {
     return 3;
   },
@@ -1064,6 +1143,7 @@ var PEA = {
 };
 
 var PEI = {
+  toString: function() { return "PEI" },
   bytes_required:function() {
     return 2;
   },
@@ -1077,6 +1157,7 @@ var PEI = {
 };
 
 var PHP = {
+  toString: function() { return "PHP" },
   bytes_required:function() {
     return 1;
   },
@@ -1088,6 +1169,7 @@ var PHP = {
 };
 
 var PLP = {
+  toString: function() { return "PLP" },
   bytes_required:function() {
     return 1;
   },
@@ -1105,6 +1187,7 @@ var PLP = {
 };
 
 var PHX = {
+  toString: function() { return "PHX" },
   bytes_required:function() {
     return 1;
   },
@@ -1121,6 +1204,7 @@ var PHX = {
 };
 
 var PLX = {
+  toString: function() { return "PLX" },
   bytes_required:function() {
     return 1;
   },
@@ -1144,6 +1228,7 @@ var PLX = {
 };
 
 var PHY = {
+  toString: function() { return "PHY" },
   bytes_required:function() {
     return 1;
   },
@@ -1160,6 +1245,7 @@ var PHY = {
 };
 
 var PLY = {
+  toString: function() { return "PLY" },
   bytes_required:function() {
     return 1;
   },
@@ -1183,6 +1269,7 @@ var PLY = {
 };
 
 var PHA = {
+  toString: function() { return "PHA" },
   bytes_required:function() {
     return 1;
   },
@@ -1199,6 +1286,7 @@ var PHA = {
 };
 
 var PLA = {
+  toString: function() { return "PLA" },
   bytes_required:function() {
     return 1;
   },
@@ -1222,6 +1310,7 @@ var PLA = {
 };
 
 var ROR_accumulator = {
+  toString: function() { return "ROR" },
   bytes_required:function() {
     return 1;
   },
@@ -1251,6 +1340,7 @@ var ROR_accumulator = {
 };
 
 var ROR_absolute = {
+  toString: function() { return "ROR" },
   bytes_required:function() {
     return 3;
   },
@@ -1291,6 +1381,7 @@ var ROR_absolute = {
 };
 
 var ROR_direct_page = {
+  toString: function() { return "ROR" },
   bytes_required:function() {
     return 2;
   },
@@ -1331,6 +1422,7 @@ var ROR_direct_page = {
 };
 
 var ROR_absolute_indexed_x = {
+  toString: function() { return "ROR" },
   bytes_required:function() {
     return 3;
   },
@@ -1343,6 +1435,7 @@ var ROR_absolute_indexed_x = {
 };
 
 var ROR_direct_page_indexed_x = {
+  toString: function() { return "ROR" },
   bytes_required:function() {
     return 2;
   },
@@ -1352,6 +1445,7 @@ var ROR_direct_page_indexed_x = {
 };
 
 var ROL_accumulator = {
+  toString: function() { return "ROL" },
   bytes_required:function() {
     return 1;
   },
@@ -1381,6 +1475,7 @@ var ROL_accumulator = {
 };
 
 var ROL_absolute = {
+  toString: function() { return "ROL" },
   bytes_required:function() {
     return 3;
   },
@@ -1421,6 +1516,7 @@ var ROL_absolute = {
 };
 
 var ROL_direct_page = {
+  toString: function() { return "ROL" },
   bytes_required:function() {
     return 2;
   },
@@ -1461,6 +1557,7 @@ var ROL_direct_page = {
 };
 
 var ROL_absolute_indexed_x = {
+  toString: function() { return "ROL" },
   bytes_required:function() {
     return 3;
   },
@@ -1473,6 +1570,7 @@ var ROL_absolute_indexed_x = {
 };
 
 var ROL_direct_page_indexed_x = {
+  toString: function() { return "ROL" },
   bytes_required:function() {
     return 2;
   },
@@ -1482,6 +1580,7 @@ var ROL_direct_page_indexed_x = {
 };
 
 var ASL_accumulator = {
+  toString: function() { return "ASL" },
   bytes_required:function() {
     return 1;
   },
@@ -1507,6 +1606,7 @@ var ASL_accumulator = {
 };
 
 var ASL_absolute = {
+  toString: function() { return "ASL" },
   bytes_required:function() {
     return 3;
   },
@@ -1543,6 +1643,7 @@ var ASL_absolute = {
 };
 
 var ASL_direct_page = {
+  toString: function() { return "ASL" },
   bytes_required:function() {
     return 2;
   },
@@ -1579,6 +1680,7 @@ var ASL_direct_page = {
 };
 
 var ASL_absolute_indexed_x = {
+  toString: function() { return "ASL" },
   bytes_required:function() {
     return 3;
   },
@@ -1591,6 +1693,7 @@ var ASL_absolute_indexed_x = {
 };
 
 var ASL_direct_page_indexed_x = {
+  toString: function() { return "ASL" },
   bytes_required:function() {
     return 2;
   },
@@ -1600,6 +1703,7 @@ var ASL_direct_page_indexed_x = {
 };
 
 var LSR_accumulator = {
+  toString: function() { return "LSR" },
   bytes_required:function(cpu) {
     return 1;
   },
@@ -1617,6 +1721,7 @@ var LSR_accumulator = {
 };
 
 var LSR_absolute = {
+  toString: function() { return "LSR" },
   bytes_required:function() {
     return 3;
   },
@@ -1650,6 +1755,7 @@ var LSR_absolute = {
 };
 
 var LSR_direct_page = {
+  toString: function() { return "LSR" },
   bytes_required:function() {
     return 2;
   },
@@ -1683,6 +1789,7 @@ var LSR_direct_page = {
 };
 
 var LSR_absolute_indexed_x = {
+  toString: function() { return "LSR" },
   bytes_required:function() {
     return 3;
   },
@@ -1695,6 +1802,7 @@ var LSR_absolute_indexed_x = {
 };
 
 var LSR_direct_page_indexed_x = {
+  toString: function() { return "LSR" },
   bytes_required:function() {
     return 2;
   },
@@ -1704,6 +1812,7 @@ var LSR_direct_page_indexed_x = {
 };
 
 var EOR_const = {
+  toString: function() { return "EOR" },
   bytes_required:function(cpu) {
     if(cpu.p.e|cpu.p.m) {
       return 2;
@@ -1729,6 +1838,7 @@ var EOR_const = {
 };
 
 var EOR_absolute = {
+  toString: function() { return "EOR" },
   bytes_required:function() {
     return 3;
   },
@@ -1745,6 +1855,7 @@ var EOR_absolute = {
 };
 
 var EOR_absolute_long = {
+  toString: function() { return "EOR" },
   bytes_required:function() {
     return 4;
   },
@@ -1761,6 +1872,7 @@ var EOR_absolute_long = {
 };
 
 var EOR_absolute_long_indexed_x = {
+  toString: function() { return "EOR" },
   bytes_required:function() {
     return 4;
   },
@@ -1787,6 +1899,7 @@ var EOR_absolute_long_indexed_x = {
 };
 
 var EOR_direct_page = {
+  toString: function() { return "EOR" },
   bytes_required:function() {
     return 2;
   },
@@ -1803,6 +1916,7 @@ var EOR_direct_page = {
 };
 
 var EOR_direct_page_indirect = {
+  toString: function() { return "EOR" },
    bytes_required:function() {
     return 2;
   },
@@ -1822,6 +1936,7 @@ var EOR_direct_page_indirect = {
 };
 
 var EOR_direct_page_indexed_x_indirect = {
+  toString: function() { return "EOR" },
   bytes_required:function() {
     return 2;
   },
@@ -1856,7 +1971,8 @@ var EOR_direct_page_indexed_x_indirect = {
 };
 
 var EOR_direct_page_indirect_long_indexed_y = {
-   bytes_required:function() {
+  toString: function() { return "EOR" },
+  bytes_required:function() {
     return 2;
   },
   execute:function(cpu, bytes) {
@@ -1885,6 +2001,7 @@ var EOR_direct_page_indirect_long_indexed_y = {
 };
 
 var EOR_direct_page_indirect_long = {
+  toString: function() { return "EOR" },
    bytes_required:function() {
     return 2;
   },
@@ -1905,6 +2022,7 @@ var EOR_direct_page_indirect_long = {
 };
 
 var EOR_direct_page_indirect_indexed_y = {
+  toString: function() { return "EOR" },
    bytes_required:function() {
     return 2;
   },
@@ -1924,6 +2042,7 @@ var EOR_direct_page_indirect_indexed_y = {
 };
 
 var EOR_absolute_indexed_x = {
+  toString: function() { return "EOR" },
   bytes_required:function() {
     return 3;
   },
@@ -1936,6 +2055,7 @@ var EOR_absolute_indexed_x = {
 };
 
 var EOR_absolute_indexed_y = {
+  toString: function() { return "EOR" },
   bytes_required:function() {
     return 3;
   },
@@ -1948,6 +2068,7 @@ var EOR_absolute_indexed_y = {
 };
 
 var EOR_direct_page_indexed_x = {
+  toString: function() { return "EOR" },
   bytes_required:function() {
     return 2;
   },
@@ -1957,6 +2078,7 @@ var EOR_direct_page_indexed_x = {
 };
 
 var EOR_stack_relative = {
+  toString: function() { return "EOR" },
   bytes_required:function() {
     return 2;
   },
@@ -1978,6 +2100,7 @@ var EOR_stack_relative = {
 };
 
 var EOR_stack_relative_indirect_indexed_y = {
+  toString: function() { return "EOR" },
   bytes_required:function() {
     return 2;
   },
@@ -2035,6 +2158,7 @@ var EOR_stack_relative_indirect_indexed_y = {
 };
 
 var ORA_const = {
+  toString: function() { return "ORA" },
   bytes_required:function(cpu) {
     if(cpu.p.e|cpu.p.m) {
       return 2;
@@ -2060,6 +2184,7 @@ var ORA_const = {
 };
 
 var ORA_absolute = {
+  toString: function() { return "ORA" },
   bytes_required:function() {
     return 3;
   },
@@ -2076,6 +2201,7 @@ var ORA_absolute = {
 };
 
 var ORA_absolute_long = {
+  toString: function() { return "ORA" },
   bytes_required:function() {
     return 4;
   },
@@ -2092,6 +2218,7 @@ var ORA_absolute_long = {
 };
 
 var ORA_absolute_long_indexed_x = {
+  toString: function() { return "ORA" },
   bytes_required:function() {
     return 4;
   },
@@ -2118,6 +2245,7 @@ var ORA_absolute_long_indexed_x = {
 };
 
 var ORA_direct_page = {
+  toString: function() { return "ORA" },
   bytes_required:function() {
     return 2;
   },
@@ -2134,6 +2262,7 @@ var ORA_direct_page = {
 };
 
 var ORA_direct_page_indirect = {
+  toString: function() { return "ORA" },
    bytes_required:function() {
     return 2;
   },
@@ -2153,6 +2282,7 @@ var ORA_direct_page_indirect = {
 };
 
 var ORA_direct_page_indexed_x_indirect = {
+  toString: function() { return "ORA" },
   bytes_required:function() {
     return 2;
   },
@@ -2187,6 +2317,7 @@ var ORA_direct_page_indexed_x_indirect = {
 };
 
 var ORA_direct_page_indirect_long = {
+  toString: function() { return "ORA" },
    bytes_required:function() {
     return 2;
   },
@@ -2207,6 +2338,7 @@ var ORA_direct_page_indirect_long = {
 };
 
 var ORA_direct_page_indirect_long_indexed_y = {
+  toString: function() { return "ORA" },
    bytes_required:function() {
     return 2;
   },
@@ -2236,6 +2368,7 @@ var ORA_direct_page_indirect_long_indexed_y = {
 };
 
 var ORA_direct_page_indirect_indexed_y = {
+  toString: function() { return "ORA" },
    bytes_required:function() {
     return 2;
   },
@@ -2255,6 +2388,7 @@ var ORA_direct_page_indirect_indexed_y = {
 };
 
 var ORA_absolute_indexed_x = {
+  toString: function() { return "ORA" },
   bytes_required:function() {
     return 3;
   },
@@ -2267,6 +2401,7 @@ var ORA_absolute_indexed_x = {
 };
 
 var ORA_absolute_indexed_y = {
+  toString: function() { return "ORA" },
   bytes_required:function() {
     return 3;
   },
@@ -2279,6 +2414,7 @@ var ORA_absolute_indexed_y = {
 };
 
 var ORA_direct_page_indexed_x = {
+  toString: function() { return "ORA" },
   bytes_required:function() {
     return 2;
   },
@@ -2288,6 +2424,7 @@ var ORA_direct_page_indexed_x = {
 };
 
 var ORA_stack_relative = {
+  toString: function() { return "ORA" },
   bytes_required:function() {
     return 2;
   },
@@ -2309,6 +2446,7 @@ var ORA_stack_relative = {
 };
 
 var ORA_stack_relative_indirect_indexed_y = {
+  toString: function() { return "ORA" },
   bytes_required:function() {
     return 2;
   },
@@ -2366,6 +2504,7 @@ var ORA_stack_relative_indirect_indexed_y = {
 };
 
 var AND_const = {
+  toString: function() { return "AND" },
   bytes_required:function(cpu) {
     if(cpu.p.e|cpu.p.m) {
       return 2;
@@ -2391,6 +2530,7 @@ var AND_const = {
 };
 
 var AND_absolute = {
+  toString: function() { return "AND" },
   bytes_required:function() {
     return 3;
   },
@@ -2407,6 +2547,7 @@ var AND_absolute = {
 };
 
 var AND_absolute_long = {
+  toString: function() { return "AND" },
   bytes_required:function() {
     return 4;
   },
@@ -2423,6 +2564,7 @@ var AND_absolute_long = {
 };
 
 var AND_absolute_long_indexed_x = {
+  toString: function() { return "AND" },
   bytes_required:function() {
     return 4;
   },
@@ -2449,6 +2591,7 @@ var AND_absolute_long_indexed_x = {
 };
 
 var AND_direct_page = {
+  toString: function() { return "AND" },
   bytes_required:function() {
     return 2;
   },
@@ -2465,6 +2608,7 @@ var AND_direct_page = {
 };
 
 var AND_direct_page_indirect = {
+  toString: function() { return "AND" },
    bytes_required:function() {
     return 2;
   },
@@ -2484,6 +2628,7 @@ var AND_direct_page_indirect = {
 };
 
 var AND_direct_page_indexed_x_indirect = {
+  toString: function() { return "AND" },
   bytes_required:function() {
     return 2;
   },
@@ -2518,6 +2663,7 @@ var AND_direct_page_indexed_x_indirect = {
 };
 
 var AND_direct_page_indirect_long = {
+  toString: function() { return "AND" },
    bytes_required:function() {
     return 2;
   },
@@ -2538,6 +2684,7 @@ var AND_direct_page_indirect_long = {
 };
 
 var AND_direct_page_indirect_long_indexed_y = {
+  toString: function() { return "AND" },
    bytes_required:function() {
     return 2;
   },
@@ -2567,6 +2714,7 @@ var AND_direct_page_indirect_long_indexed_y = {
 };
 
 var AND_direct_page_indirect_indexed_y = {
+  toString: function() { return "AND" },
    bytes_required:function() {
     return 2;
   },
@@ -2586,6 +2734,7 @@ var AND_direct_page_indirect_indexed_y = {
 };
 
 var AND_absolute_indexed_x = {
+  toString: function() { return "AND" },
   bytes_required:function() {
     return 3;
   },
@@ -2598,6 +2747,7 @@ var AND_absolute_indexed_x = {
 };
 
 var AND_absolute_indexed_y = {
+  toString: function() { return "AND" },
   bytes_required:function() {
     return 3;
   },
@@ -2610,6 +2760,7 @@ var AND_absolute_indexed_y = {
 };
 
 var AND_direct_page_indexed_x = {
+  toString: function() { return "AND" },
   bytes_required:function() {
     return 2;
   },
@@ -2619,6 +2770,7 @@ var AND_direct_page_indexed_x = {
 };
 
 var AND_stack_relative = {
+  toString: function() { return "AND" },
   bytes_required:function() {
     return 2;
   },
@@ -2640,6 +2792,7 @@ var AND_stack_relative = {
 };
 
 var AND_stack_relative_indirect_indexed_y = {
+  toString: function() { return "AND" },
   bytes_required:function() {
     return 2;
   },
@@ -2697,6 +2850,7 @@ var AND_stack_relative_indirect_indexed_y = {
 };
 
 var CPX_const = {
+  toString: function() { return "CPX" },
   bytes_required:function(cpu) {
     if(cpu.p.e|cpu.p.x) {
       return 2; 
@@ -2735,6 +2889,7 @@ var CPX_const = {
 };
 
 var CPX_direct_page = {
+  toString: function() { return "CPX" },
   bytes_required:function() {
     return 2;
   },
@@ -2751,6 +2906,7 @@ var CPX_direct_page = {
 };
 
 var CPX_absolute = {
+  toString: function() { return "CPX" },
   bytes_required:function() {
     return 3;
   },
@@ -2767,6 +2923,7 @@ var CPX_absolute = {
 };
 
 var CPY_const = {
+  toString: function() { return "CPY" },
   bytes_required:function(cpu) {
     if(cpu.p.e|cpu.p.x) {
       return 2; 
@@ -2805,6 +2962,7 @@ var CPY_const = {
 };
 
 var CPY_direct_page = {
+  toString: function() { return "CPY" },
   bytes_required:function() {
     return 2;
   },
@@ -2821,6 +2979,7 @@ var CPY_direct_page = {
 };
 
 var CPY_absolute = {
+  toString: function() { return "CPY" },
   bytes_required:function() {
     return 3;
   },
@@ -2837,6 +2996,7 @@ var CPY_absolute = {
 };
 
 var CMP_const = {
+  toString: function() { return "CMP" },
   bytes_required:function(cpu) {
     if(cpu.p.e|cpu.p.m) {
       return 2; 
@@ -2875,6 +3035,7 @@ var CMP_const = {
 };
 
 var CMP_direct_page = {
+  toString: function() { return "CMP" },
   bytes_required:function() {
     return 2;
   },
@@ -2891,6 +3052,7 @@ var CMP_direct_page = {
 };
 
 var CMP_direct_page_indexed_x = {
+  toString: function() { return "CMP" },
   bytes_required:function() {
     return 2;
   },
@@ -2900,6 +3062,7 @@ var CMP_direct_page_indexed_x = {
 };
 
 var CMP_direct_page_indirect = {
+  toString: function() { return "CMP" },
    bytes_required:function() {
     return 2;
   },
@@ -2919,6 +3082,7 @@ var CMP_direct_page_indirect = {
 };
 
 var CMP_direct_page_indexed_x_indirect = {
+  toString: function() { return "CMP" },
   bytes_required:function() {
     return 2;
   },
@@ -2953,6 +3117,7 @@ var CMP_direct_page_indexed_x_indirect = {
 };
 
 var CMP_direct_page_indirect_long = {
+  toString: function() { return "CMP" },
    bytes_required:function() {
     return 2;
   },
@@ -2973,6 +3138,7 @@ var CMP_direct_page_indirect_long = {
 };
 
 var CMP_direct_page_indirect_long_indexed_y = {
+  toString: function() { return "CMP" },
    bytes_required:function() {
     return 2;
   },
@@ -3002,6 +3168,7 @@ var CMP_direct_page_indirect_long_indexed_y = {
 };
 
 var CMP_direct_page_indirect_indexed_y = {
+  toString: function() { return "CMP" },
    bytes_required:function() {
     return 2;
   },
@@ -3021,6 +3188,7 @@ var CMP_direct_page_indirect_indexed_y = {
 };
 
 var CMP_absolute = {
+  toString: function() { return "CMP" },
   bytes_required:function() {
     return 3;
   },
@@ -3037,6 +3205,7 @@ var CMP_absolute = {
 };
 
 var CMP_absolute_long = {
+  toString: function() { return "CMP" },
   bytes_required:function() {
     return 4;
   },
@@ -3053,6 +3222,7 @@ var CMP_absolute_long = {
 };
 
 var CMP_absolute_long_indexed_x = {
+  toString: function() { return "CMP" },
   bytes_required:function() {
     return 4;
   },
@@ -3079,6 +3249,7 @@ var CMP_absolute_long_indexed_x = {
 };
 
 var CMP_absolute_indexed_x = {
+  toString: function() { return "CMP" },
   bytes_required:function() {
     return 3;
   },
@@ -3091,6 +3262,7 @@ var CMP_absolute_indexed_x = {
 };
 
 var CMP_absolute_indexed_y = {
+  toString: function() { return "CMP" },
   bytes_required:function() {
     return 3;
   },
@@ -3103,6 +3275,7 @@ var CMP_absolute_indexed_y = {
 };
 
 var CMP_stack_relative = {
+  toString: function() { return "CMP" },
   bytes_required:function() {
     return 2;
   },
@@ -3124,6 +3297,7 @@ var CMP_stack_relative = {
 };
 
 var CMP_stack_relative_indirect_indexed_y = {
+  toString: function() { return "CMP" },
   bytes_required:function() {
     return 2;
   },
@@ -3181,6 +3355,7 @@ var CMP_stack_relative_indirect_indexed_y = {
 };
 
 var SBC_const = {
+  toString: function() { return "SBC" },
   bytes_required:function(cpu) {
     if(cpu.p.e|cpu.p.m) {
       return 2;
@@ -3238,6 +3413,7 @@ var SBC_const = {
 };
 
 var SBC_direct_page = {
+  toString: function() { return "SBC" },
   bytes_required:function() {
     return 2;
   },
@@ -3254,6 +3430,7 @@ var SBC_direct_page = {
 };
 
 var SBC_absolute = {
+  toString: function() { return "SBC" },
   bytes_required:function() {
     return 3;
   },
@@ -3270,6 +3447,7 @@ var SBC_absolute = {
 };
 
 var SBC_absolute_long = {
+  toString: function() { return "SBC" },
   bytes_required:function() {
     return 4;
   },
@@ -3286,6 +3464,7 @@ var SBC_absolute_long = {
 };
 
 var SBC_absolute_long_indexed_x = {
+  toString: function() { return "SBC" },
   bytes_required:function() {
     return 4;
   },
@@ -3312,6 +3491,7 @@ var SBC_absolute_long_indexed_x = {
 };
 
 var SBC_direct_page_indirect = {
+  toString: function() { return "SBC" },
    bytes_required:function() {
     return 2;
   },
@@ -3331,6 +3511,7 @@ var SBC_direct_page_indirect = {
 };
 
 var SBC_direct_page_indexed_x_indirect = {
+  toString: function() { return "SBC" },
   bytes_required:function() {
     return 2;
   },
@@ -3365,6 +3546,7 @@ var SBC_direct_page_indexed_x_indirect = {
 };
 
 var SBC_direct_page_indirect_long = {
+  toString: function() { return "SBC" },
    bytes_required:function() {
     return 2;
   },
@@ -3385,6 +3567,7 @@ var SBC_direct_page_indirect_long = {
 };
 
 var SBC_direct_page_indirect_long_indexed_y = {
+  toString: function() { return "SBC" },
    bytes_required:function() {
     return 2;
   },
@@ -3414,6 +3597,7 @@ var SBC_direct_page_indirect_long_indexed_y = {
 };
 
 var SBC_direct_page_indirect_indexed_y = {
+  toString: function() { return "SBC" },
    bytes_required:function() {
     return 2;
   },
@@ -3433,6 +3617,7 @@ var SBC_direct_page_indirect_indexed_y = {
 };
 
 var SBC_absolute_indexed_x = {
+  toString: function() { return "SBC" },
   bytes_required:function() {
     return 3;
   },
@@ -3445,6 +3630,7 @@ var SBC_absolute_indexed_x = {
 };
 
 var SBC_absolute_indexed_y = {
+  toString: function() { return "SBC" },
   bytes_required:function() {
     return 3;
   },
@@ -3457,6 +3643,7 @@ var SBC_absolute_indexed_y = {
 };
 
 var SBC_direct_page_indexed_x = {
+  toString: function() { return "SBC" },
   bytes_required:function() {
     return 2;
   },
@@ -3466,6 +3653,7 @@ var SBC_direct_page_indexed_x = {
 };
 
 var SBC_direct_page_indirect = {
+  toString: function() { return "SBC" },
    bytes_required:function() {
     return 2;
   },
@@ -3485,6 +3673,7 @@ var SBC_direct_page_indirect = {
 };
 
 var SBC_stack_relative = {
+  toString: function() { return "SBC" },
   bytes_required:function() {
     return 2;
   },
@@ -3506,6 +3695,7 @@ var SBC_stack_relative = {
 };
 
 var SBC_stack_relative_indirect_indexed_y = {
+  toString: function() { return "SBC" },
   bytes_required:function() {
     return 2;
   },
@@ -3563,6 +3753,7 @@ var SBC_stack_relative_indirect_indexed_y = {
 };
 
 var ADC_const = {
+  toString: function() { return "ADC" },
   bytes_required:function(cpu) {
     if(cpu.p.e|cpu.p.m) {
       return 2;
@@ -3620,6 +3811,7 @@ var ADC_const = {
 };
 
 var ADC_absolute = {
+  toString: function() { return "ADC" },
   bytes_required:function() {
     return 3;
   },
@@ -3636,6 +3828,7 @@ var ADC_absolute = {
 };
 
 var ADC_absolute_long = {
+  toString: function() { return "ADC" },
   bytes_required:function() {
     return 4;
   },
@@ -3652,6 +3845,7 @@ var ADC_absolute_long = {
 };
 
 var ADC_absolute_long_indexed_x = {
+  toString: function() { return "ADC" },
   bytes_required:function() {
     return 4;
   },
@@ -3678,6 +3872,7 @@ var ADC_absolute_long_indexed_x = {
 };
 
 var ADC_direct_page = {
+  toString: function() { return "ADC" },
   bytes_required:function() {
     return 2;
   },
@@ -3694,6 +3889,7 @@ var ADC_direct_page = {
 };
 
 var ADC_direct_page_indirect = {
+  toString: function() { return "ADC" },
    bytes_required:function() {
     return 2;
   },
@@ -3713,6 +3909,7 @@ var ADC_direct_page_indirect = {
 };
 
 var ADC_direct_page_indexed_x_indirect = {
+  toString: function() { return "ADC" },
   bytes_required:function() {
     return 2;
   },
@@ -3747,6 +3944,7 @@ var ADC_direct_page_indexed_x_indirect = {
 };
 
 var ADC_direct_page_indirect_long_indexed_y = {
+  toString: function() { return "ADC" },
    bytes_required:function() {
     return 2;
   },
@@ -3776,6 +3974,7 @@ var ADC_direct_page_indirect_long_indexed_y = {
 };
 
 var ADC_direct_page_indirect_long = {
+  toString: function() { return "ADC" },
    bytes_required:function() {
     return 2;
   },
@@ -3796,6 +3995,7 @@ var ADC_direct_page_indirect_long = {
 };
 
 var ADC_direct_page_indirect_indexed_y = {
+  toString: function() { return "ADC" },
    bytes_required:function() {
     return 2;
   },
@@ -3815,6 +4015,7 @@ var ADC_direct_page_indirect_indexed_y = {
 };
 
 var ADC_absolute_indexed_x = {
+  toString: function() { return "ADC" },
   bytes_required:function() {
     return 3;
   },
@@ -3827,6 +4028,7 @@ var ADC_absolute_indexed_x = {
 };
 
 var ADC_absolute_indexed_y = {
+  toString: function() { return "ADC" },
   bytes_required:function() {
     return 3;
   },
@@ -3839,6 +4041,7 @@ var ADC_absolute_indexed_y = {
 };
 
 var ADC_direct_page_indexed_x = {
+  toString: function() { return "ADC" },
   bytes_required:function() {
     return 2;
   },
@@ -3848,6 +4051,7 @@ var ADC_direct_page_indexed_x = {
 };
 
 var ADC_stack_relative = {
+  toString: function() { return "ADC" },
   bytes_required:function() {
     return 2;
   },
@@ -3869,6 +4073,7 @@ var ADC_stack_relative = {
 };
 
 var ADC_stack_relative_indirect_indexed_y = {
+  toString: function() { return "ADC" },
   bytes_required:function() {
     return 2;
   },
@@ -3926,6 +4131,7 @@ var ADC_stack_relative_indirect_indexed_y = {
 };
 
 var BMI = {
+  toString: function() { return "BMI" },
   bytes_required:function() {
     return 2;
   },
@@ -3942,6 +4148,7 @@ var BMI = {
 };
 
 var BPL = {
+  toString: function() { return "BPL" },
   bytes_required:function() {
     return 2;
   },
@@ -3958,6 +4165,7 @@ var BPL = {
 };
 
 var BVC = {
+  toString: function() { return "BVC" },
   bytes_required:function() {
     return 2;
   },
@@ -3975,6 +4183,7 @@ var BVC = {
 
 
 var BVS = {
+  toString: function() { return "BVS" },
   bytes_required:function() {
     return 2;
   },
@@ -3991,6 +4200,7 @@ var BVS = {
 };
 
 var BCC = {
+  toString: function() { return "BCC" },
   bytes_required:function() {
     return 2;
   },
@@ -4007,6 +4217,7 @@ var BCC = {
 };
 
 var BCS = {
+  toString: function() { return "BCS" },
   bytes_required:function() {
     return 2;
   },
@@ -4023,6 +4234,7 @@ var BCS = {
 };
 
 var BEQ = {
+  toString: function() { return "BEQ" },
   bytes_required:function() {
     return 2;
   },
@@ -4039,6 +4251,7 @@ var BEQ = {
 };
 
 var BNE = {
+  toString: function() { return "BNE" },
    bytes_required:function() {
     return 2;
   },
@@ -4056,6 +4269,7 @@ var BNE = {
 };
 
 var BRA = {
+  toString: function() { return "BRA" },
   bytes_required:function() {
     return 2;
   },
@@ -4070,6 +4284,7 @@ var BRA = {
 };
 
 var BRL = {
+  toString: function() { return "BRL" },
   bytes_required:function() {
     return 3;
   },
@@ -4086,6 +4301,7 @@ var BRL = {
 
 
 var JMP_absolute_indirect = {
+  toString: function() { return "JMP" },
   bytes_required:function() {
     return 3;
   }, 
@@ -4098,6 +4314,7 @@ var JMP_absolute_indirect = {
 };
 
 var JMP_absolute_long = {
+  toString: function() { return "JMP" },
   bytes_required:function() {
     return 4;
   },
@@ -4108,6 +4325,7 @@ var JMP_absolute_long = {
 };
 
 var JMP_absolute_indirect_long = {
+  toString: function() { return "JMP" },
   bytes_required:function() {
     return 3;
   },
@@ -4121,6 +4339,7 @@ var JMP_absolute_indirect_long = {
 };
 
 var JMP_absolute_indexed_x_indirect = {
+  toString: function() { return "JMP" },
   bytes_required:function() {
     return 3;
   },
@@ -4149,6 +4368,7 @@ var JMP_absolute_indexed_x_indirect = {
 };
 
 var JMP_absolute = {
+  toString: function() { return "JMP" },
   bytes_required:function() {
     return 3;
   },
@@ -4158,6 +4378,7 @@ var JMP_absolute = {
 };
 
 var TYA = {
+  toString: function() { return "TYA" },
   bytes_required:function() {
     return 1;
   },
@@ -4186,6 +4407,7 @@ var TYA = {
 };
 
 var TAY = {
+  toString: function() { return "TAY" },
   bytes_required:function() {
     return 1;
   },
@@ -4222,6 +4444,7 @@ var TAY = {
 
 
 var TXA = {
+  toString: function() { return "TXA" },
   bytes_required:function() {
     return 1;
   },
@@ -4250,6 +4473,7 @@ var TXA = {
 };
 
 var TAX = {
+  toString: function() { return "TAX" },
   bytes_required:function() {
     return 1;
   },
@@ -4285,6 +4509,7 @@ var TAX = {
 };
 
 var TXY = {
+  toString: function() { return "TXY" },
   bytes_required:function() {
     return 1;
   },
@@ -4305,6 +4530,7 @@ var TXY = {
 };
 
 var TYX = {
+  toString: function() { return "TYX" },
   bytes_required:function() {
     return 1;
   },
@@ -4325,6 +4551,7 @@ var TYX = {
 };
 
 var TCD = {
+  toString: function() { return "TCD" },
   bytes_required:function() {
     return 1;
   },
@@ -4347,6 +4574,7 @@ var TCD = {
 };
 
 var TDC = {
+  toString: function() { return "TDC" },
   bytes_required:function() {
     return 1;
   },
@@ -4370,6 +4598,7 @@ var TDC = {
 };
 
 var TCS = {
+  toString: function() { return "TCS" },
   bytes_required:function() {
     return 1;
   },
@@ -4383,6 +4612,7 @@ var TCS = {
 };
 
 var TSC = {
+  toString: function() { return "TSC" },
   bytes_required:function() {
     return 1;
   },
@@ -4414,6 +4644,7 @@ var TSC = {
 };
 
 var STZ_absolute = {
+  toString: function() { return "STZ" },
   bytes_required: function() {
     return 3;
   },
@@ -4429,6 +4660,7 @@ var STZ_absolute = {
 };
 
 var STZ_direct_page = {
+  toString: function() { return "STZ" },
   bytes_required: function() {
     return 2;
   },
@@ -4444,6 +4676,7 @@ var STZ_direct_page = {
 };
 
 var STZ_absolute_indexed_x = {
+  toString: function() { return "STZ" },
   bytes_required: function() {
     return 3;
   },
@@ -4459,6 +4692,7 @@ var STZ_absolute_indexed_x = {
 };
 
 var STZ_direct_page_indexed_x = {
+  toString: function() { return "STZ" },
   bytes_required: function() {
     return 2;
   },
@@ -4485,6 +4719,7 @@ var STZ_direct_page_indexed_x = {
 };
 
 var STA_direct_page_indirect = {
+  toString: function() { return "STA" },
   bytes_required:function() {
     return 2;
   },
@@ -4507,6 +4742,7 @@ var STA_direct_page_indirect = {
 };
 
 var STA_direct_page_indirect_long = {
+  toString: function() { return "STA" },
   bytes_required:function() {
     return 2;
   },
@@ -4531,6 +4767,7 @@ var STA_direct_page_indirect_long = {
 };
 
 var STA_direct_page_indirect_long_indexed_y = {
+  toString: function() { return "STA" },
   bytes_required:function() {
     return 2;
   },
@@ -4569,6 +4806,7 @@ var STA_direct_page_indirect_long_indexed_y = {
 };
 
 var STA_direct_page_indirect_indexed_y = {
+  toString: function() { return "STA" },
   bytes_required:function() {
     return 2;
   },
@@ -4591,6 +4829,7 @@ var STA_direct_page_indirect_indexed_y = {
 };
 
 var STA_stack_relative = {
+  toString: function() { return "STA" },
   bytes_required:function() {
     return 2;
   },
@@ -4613,6 +4852,7 @@ var STA_stack_relative = {
 };
 
 var STA_stack_relative_indirect_indexed_y = {
+  toString: function() { return "STA" },
   bytes_required:function() {
     return 2;
   },
@@ -4672,6 +4912,7 @@ var STA_stack_relative_indirect_indexed_y = {
 };
 
 var LDA_direct_page_indirect = {
+  toString: function() { return "LDA" },
   bytes_required:function() {
     return 2;
   },
@@ -4700,6 +4941,7 @@ var LDA_direct_page_indirect = {
 };
 
 var LDA_direct_page_indexed_x_indirect = {
+  toString: function() { return "LDA" },
   bytes_required:function() {
     return 2;
   },
@@ -4743,6 +4985,7 @@ var LDA_direct_page_indexed_x_indirect = {
 
 
 var LDA_direct_page_indirect_long = {
+  toString: function() { return "LDA" },
   bytes_required:function() {
     return 2;
   },
@@ -4773,6 +5016,7 @@ var LDA_direct_page_indirect_long = {
 };
 
 var LDA_direct_page_indirect_long_indexed_y = {
+  toString: function() { return "LDA" },
   bytes_required:function() {
     return 2;
   },
@@ -4817,6 +5061,7 @@ var LDA_direct_page_indirect_long_indexed_y = {
 };
 
 var LDA_direct_page_indirect_indexed_y = {
+  toString: function() { return "LDA" },
   bytes_required:function() {
     return 2;
   },
@@ -4846,6 +5091,7 @@ var LDA_direct_page_indirect_indexed_y = {
 };
 
 var LDA_direct_page_indexed_x = {
+  toString: function() { return "LDA" },
   bytes_required:function() {
     return 2;
   },
@@ -4869,6 +5115,7 @@ var LDA_direct_page_indexed_x = {
 };
 
 var LDA_absolute_indexed_y = {
+  toString: function() { return "LDA" },
   bytes_required:function() {
     return 3;
   },
@@ -4892,6 +5139,7 @@ var LDA_absolute_indexed_y = {
 };
 
 var LDA_absolute_indexed_x = {
+  toString: function() { return "LDA" },
   bytes_required:function() {
     return 3;
   },
@@ -4915,6 +5163,7 @@ var LDA_absolute_indexed_x = {
 };
 
 var LDA_stack_relative = {
+  toString: function() { return "LDA" },
   bytes_required:function() {
     return 2;
   },
@@ -4936,6 +5185,7 @@ var LDA_stack_relative = {
 };
 
 var LDA_stack_relative_indirect_indexed_y = {
+  toString: function() { return "LDA" },
   bytes_required:function() {
     return 2;
   },
@@ -4993,6 +5243,7 @@ var LDA_stack_relative_indirect_indexed_y = {
 };
 
 var NOP = {
+  toString: function() { return "NOP" },
   bytes_required:function() {
     return 1; 
   },
@@ -5000,6 +5251,7 @@ var NOP = {
 };
 
 var LDY_const = {
+  toString: function() { return "LDY" },
   bytes_required:function(cpu) {
     if(cpu.p.e|cpu.p.x)
       return 2;
@@ -5023,6 +5275,7 @@ var LDY_const = {
 };
 
 var LDY_absolute_indexed_x = {
+  toString: function() { return "LDY" },
   bytes_required:function() {
     return 3;
   },
@@ -5046,6 +5299,7 @@ var LDY_absolute_indexed_x = {
 };
 
 var LDY_direct_page_indexed_x = {
+  toString: function() { return "LDY" },
   bytes_required:function() {
     return 2;
   },
@@ -5069,6 +5323,7 @@ var LDY_direct_page_indexed_x = {
 }
 
 var LDY_absolute = {
+  toString: function() { return "LDY" },
   bytes_required:function() {
     return 3;
   },
@@ -5092,6 +5347,7 @@ var LDY_absolute = {
 };
 
 var LDY_direct_page = {
+  toString: function() { return "LDY" },
   bytes_required:function() {
     return 2;
   },
@@ -5115,6 +5371,7 @@ var LDY_direct_page = {
 };
 
 var DEX = {
+  toString: function() { return "DEX" },
   bytes_required:function() {
     return 1;
   },
@@ -5145,6 +5402,7 @@ var DEX = {
 };
 
 var DEY = {
+  toString: function() { return "DEY" },
   bytes_required:function() {
     return 1;
   },
@@ -5176,6 +5434,7 @@ var DEY = {
 };
 
 var DEC_accumulator = {
+  toString: function() { return "DEC" },
   bytes_required: function() {
     return 1;
   },
@@ -5208,6 +5467,7 @@ var DEC_accumulator = {
 };
 
 var DEC_absolute = {
+  toString: function() { return "DEC" },
   bytes_required: function() {
     return 3;
   },
@@ -5256,6 +5516,7 @@ var DEC_absolute = {
 };
 
 var DEC_absolute_indexed_x = {
+  toString: function() { return "DEC" },
   bytes_required: function() {
     return 3;
   },
@@ -5304,6 +5565,7 @@ var DEC_absolute_indexed_x = {
 };
 
 var DEC_direct_page = {
+  toString: function() { return "DEC" },
   bytes_required: function() {
     return 2;
   },
@@ -5352,6 +5614,7 @@ var DEC_direct_page = {
 };
 
 var DEC_direct_page_indexed_x = {
+  toString: function() { return "DEC" },
   bytes_required: function() {
     return 2;
   },
@@ -5400,6 +5663,7 @@ var DEC_direct_page_indexed_x = {
 };
 
 var INX = {
+  toString: function() { return "INX" },
   bytes_required:function() {
     return 1;
   },
@@ -5423,6 +5687,7 @@ var INX = {
 };
 
 var INY = {
+  toString: function() { return "INY" },
   bytes_required:function() {
     return 1;
   },
@@ -5445,6 +5710,7 @@ var INY = {
 };
 
 var INC_accumulator = {
+  toString: function() { return "INC" },
   bytes_required: function() {
     return 1;
   },
@@ -5467,6 +5733,7 @@ var INC_accumulator = {
 };
 
 var INC_absolute = {
+  toString: function() { return "INC" },
   bytes_required: function() {
     return 3;
   },
@@ -5503,6 +5770,7 @@ var INC_absolute = {
 };
 
 var INC_absolute_indexed_x = {
+  toString: function() { return "INC" },
   bytes_required: function() {
     return 3;
   },
@@ -5539,6 +5807,7 @@ var INC_absolute_indexed_x = {
 };
 
 var INC_direct_page = {
+  toString: function() { return "INC" },
   bytes_required: function() {
     return 2;
   },
@@ -5575,6 +5844,7 @@ var INC_direct_page = {
 };
 
 var INC_direct_page_indexed_x = {
+  toString: function() { return "INC" },
   bytes_required: function() {
     return 2;
   },
@@ -5611,6 +5881,7 @@ var INC_direct_page_indexed_x = {
 };
 
 var STA_direct_page_indexed_x = {
+  toString: function() { return "STA" },
   bytes_required: function() {
     return 2;
   },
@@ -5628,6 +5899,7 @@ var STA_direct_page_indexed_x = {
 };
 
 var STA_direct_page_indexed_x_indirect = {
+  toString: function() { return "STA" },
   bytes_required:function() {
     return 2;
   },
@@ -5670,6 +5942,7 @@ var STA_direct_page_indexed_x_indirect = {
 };
 
 var STA_direct_page = {
+  toString: function() { return "STA" },
   bytes_required: function() {
     return 2;
   },
@@ -5687,6 +5960,7 @@ var STA_direct_page = {
 };
 
 var STA_absolute_indexed_x = {
+  toString: function() { return "STA" },
   bytes_required: function() {
     return 3;
   },
@@ -5704,6 +5978,7 @@ var STA_absolute_indexed_x = {
 };
 
 var STA_absolute_indexed_y = {
+  toString: function() { return "STA" },
   bytes_required: function() {
     return 3;
   },
@@ -5721,6 +5996,7 @@ var STA_absolute_indexed_y = {
 };
 
 var STY_direct_page_indexed_x = {
+  toString: function() { return "STY" },
   bytes_required: function() {
     return 2;
   },
@@ -5738,6 +6014,7 @@ var STY_direct_page_indexed_x = {
 };
 
 var STY_direct_page = {
+  toString: function() { return "STY" },
   bytes_required: function() {
     return 2;
   },
@@ -5755,6 +6032,7 @@ var STY_direct_page = {
 };
 
 var STY_absolute = {
+  toString: function() { return "STY" },
   bytes_required: function() {
     return 3;
   },
@@ -5772,6 +6050,7 @@ var STY_absolute = {
 };
 
 var STX_direct_page_indexed_y = {
+  toString: function() { return "STX" },
   bytes_required: function() {
     return 2;
   },
@@ -5789,6 +6068,7 @@ var STX_direct_page_indexed_y = {
 };
 
 var STX_direct_page = {
+  toString: function() { return "STX" },
   bytes_required: function() {
     return 2;
   },
@@ -5806,6 +6086,7 @@ var STX_direct_page = {
 };
 
 var STX_absolute = {
+  toString: function() { return "STX" },
   bytes_required: function() {
     return 3;
   },
@@ -5823,6 +6104,7 @@ var STX_absolute = {
 };
 
 var STA_absolute_long = {
+  toString: function() { return "STA" },
   bytes_required: function() {
     return 4;
   },
@@ -5840,6 +6122,7 @@ var STA_absolute_long = {
 };
 
 var STA_absolute_long_indexed_x = {
+  toString: function() { return "STA" },
   bytes_required: function() {
     return 4;
   },
@@ -5866,6 +6149,7 @@ var STA_absolute_long_indexed_x = {
 };
 
 var STA_absolute = {
+  toString: function() { return "STA" },
   bytes_required: function() {
     return 3;
   },
@@ -5883,6 +6167,7 @@ var STA_absolute = {
 };
 
 var LDX_direct_page = {
+  toString: function() { return "LDX" },
   bytes_required: function() {
     return 2;
   },
@@ -5906,6 +6191,7 @@ var LDX_direct_page = {
 };
 
 var LDX_direct_page_indexed_y = {
+  toString: function() { return "LDX" },
   bytes_required: function() {
     return 2;
   },
@@ -5930,6 +6216,7 @@ var LDX_direct_page_indexed_y = {
 };
 
 var LDA_direct_page = {
+  toString: function() { return "LDA" },
   bytes_required: function() {
     return 2;
   },
@@ -5953,6 +6240,7 @@ var LDA_direct_page = {
 };
 
 var LDX_absolute_indexed_y = {
+  toString: function() { return "LDX" },
   bytes_required: function() {
     return 3;
   },
@@ -5976,6 +6264,7 @@ var LDX_absolute_indexed_y = {
 };
 
 var LDX_absolute = {
+  toString: function() { return "LDX" },
   bytes_required: function() {
     return 3;
   },
@@ -5999,6 +6288,7 @@ var LDX_absolute = {
 };
 
 var LDA_absolute_long = {
+  toString: function() { return "LDA" },
   bytes_required: function() {
     return 4;
   },
@@ -6022,6 +6312,7 @@ var LDA_absolute_long = {
 };
 
 var LDA_absolute_long_indexed_x = {
+  toString: function() { return "LDA" },
   bytes_required:function() {
     return 4;
   },
@@ -6055,6 +6346,7 @@ var LDA_absolute_long_indexed_x = {
 };
 
 var LDA_absolute = {
+  toString: function() { return "LDA" },
   bytes_required: function() {
     return 3;
   },
@@ -6078,6 +6370,7 @@ var LDA_absolute = {
 };
 
 var LDA_const = {
+  toString: function() { return "LDA" },
   bytes_required: function(cpu) {
     if(cpu.p.e|cpu.p.m) {
       return 2;
@@ -6102,6 +6395,7 @@ var LDA_const = {
 };
 
 var LDX_const = {
+  toString: function() { return "LDX" },
   bytes_required: function(cpu) { 
     if(cpu.p.e|cpu.p.x) { 
       return 2; 
@@ -6129,6 +6423,7 @@ var LDX_const = {
 // Set bits in the p status register as specified by 1's in the position
 // that represents each register.
 var SEP = {
+  toString: function() { return "SEP" },
   bytes_required: function() { return 2; },
   execute: function(cpu, bytes) {
     // TODO: Handle emulation mode.
@@ -6155,6 +6450,7 @@ var SEP = {
 // Clear bits in the p status register as specified by 1's in the position
 // that represents each register.
 var REP = {
+  toString: function() { return "REP" },
   bytes_required: function() { return 2; },
   execute: function(cpu, bytes) {
     // TODO: Handle emulation mode.
@@ -6180,6 +6476,7 @@ var REP = {
 
 var XCE = {
   bytes_required: function() { return 1; },
+  toString: function() { return "XCE" },
   execute: function(cpu) {
     var temp = cpu.p.c; 
     cpu.p.c = cpu.p.e;
@@ -6202,6 +6499,7 @@ var XCE = {
 };
 
 var CLC = {
+  toString: function() { return "CLC" },
   bytes_required: function() { return 1; },
   execute: function(cpu) {
     cpu.p.c = 0;
@@ -6209,6 +6507,7 @@ var CLC = {
 };
 
 var SEI = {
+  toString: function() { return "SEI" },
   bytes_required: function() { return 1; },
   execute: function(cpu) {
     cpu.p.i = 1;
@@ -6216,6 +6515,7 @@ var SEI = {
 };
 
 var CLI = {
+  toString: function() { return "CLI" },
   bytes_required: function() { return 1; },
   execute: function(cpu) {
     cpu.p.i = 0;
@@ -6223,6 +6523,7 @@ var CLI = {
 };
 
 var SEC = {
+  toString: function() { return "SEC" },
   bytes_required: function() { return 1; },
   execute: function(cpu) {
     cpu.p.c = 1;
@@ -6230,6 +6531,7 @@ var SEC = {
 };
 
 var CLD = {
+  toString: function() { return "CLD" },
   bytes_required:function() {
     return 1;
   },
@@ -6239,6 +6541,7 @@ var CLD = {
 };
 
 var SED = {
+  toString: function() { return "SED" },
   bytes_required:function() {
     return 1;
   },
@@ -6248,6 +6551,7 @@ var SED = {
 };
 
 var CLV = {
+  toString: function() { return "CLV" },
   bytes_required:function() {
     return 1;
   },
@@ -6257,6 +6561,7 @@ var CLV = {
 };
 
 var XBA = {
+  toString: function() { return "XBA" },
   bytes_required:function() {
     return 1;
   },

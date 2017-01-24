@@ -8,17 +8,41 @@ var cpu;
 $(document).ready(function() {
   cpu = new CPU_65816();
   updateFields(); 
+  var can_step = false;
   $("#execute").click(function() {
+    cpu.reset();
     cpu.execute($("#hex").val());
+    $("#load").removeAttr("disabled");
     updateFields();
   });
   $("#reset").click(function() {
-    cpu = new CPU_65816();
+    cpu.reset();
     $("#hex").val("");
     updateFields();
+    $("#step").attr("disabled", "disabled");
+    $("#load").removeAttr("disabled");
+  });
+  $("#load").click(function() {
+    cpu.reset();
+    cpu.load_program($("#hex").val());
+    updateFields();
+    can_step = true;
+    $("#step").removeAttr("disabled");
+    $("#load").attr("disabled", "disabled");
+  });
+  $("#step").click(function() {
+    if(can_step) {
+      cpu.executing = true;
+      cpu.step();
+      if(!cpu.executing) {
+        can_step = false;
+        $("#step").attr("disabled", "disabled");
+        $("#load").removeAttr("disabled");
+      }
+      updateFields();
+    }
   });
 });
-
 function updateFields() {
   $("#registerA").text(cpu.r.a.toString(16));
   $("#registerB").text(cpu.r.b.toString(16));
@@ -38,6 +62,9 @@ function updateFields() {
   $("#registerPFlagM").text(cpu.p.m);
   $("#registerPFlagV").text(cpu.p.v);
   $("#registerPFlagN").text(cpu.p.n);
+  $("#instruction").text(cpu.instruction);
+  $("#translate").text(cpu.instruction_translate)
+  $("#commentaire").text(cpu.instruction_details);
 }
 </script>
 <style>
@@ -68,28 +95,37 @@ function updateFields() {
 <body>
 <div class="left">
 <div class="left">
-<h3>Registers</h3>
-<div class="row"><div class="label">a</div><div id="registerA" class="value"></div></div>
-<div class="row"><div class="label">b</div><div id="registerB" class="value"></div></div>
-<div class="row"><div class="label">x</div><div id="registerX" class="value"></div></div>
-<div class="row"><div class="label">y</div><div id="registerY" class="value"></div></div>
-<div class="row"><div class="label">d</div><div id="registerD" class="value"></div></div>
-<div class="row"><div class="label">s</div><div id="registerS" class="value"></div></div>
-<div class="row"><div class="label">pc</div><div id="registerPC" class="value"></div></div>
-<div class="row"><div class="label">dbr</div><div id="registerDBR" class="value"></div></div>
-<div class="row"><div class="label">k</div><div id="registerK" class="value"></div></div>
+    <h3>Registers</h3>
+        <div class="row"><div class="label">a</div><div id="registerA" class="value"></div></div>
+        <div class="row"><div class="label">b</div><div id="registerB" class="value"></div></div>
+        <div class="row"><div class="label">x</div><div id="registerX" class="value"></div></div>
+        <div class="row"><div class="label">y</div><div id="registerY" class="value"></div></div>
+        <div class="row"><div class="label">d</div><div id="registerD" class="value"></div></div>
+        <div class="row"><div class="label">s</div><div id="registerS" class="value"></div></div>
+        <div class="row"><div class="label">pc</div><div id="registerPC" class="value"></div></div>
+        <div class="row"><div class="label">dbr</div><div id="registerDBR" class="value"></div></div>
+        <div class="row"><div class="label">k</div><div id="registerK" class="value"></div></div>
 </div>
 <div class="right">
-<h3>P Register Flags</h3>
-<div class="row"><div class="label">e</div><div id="registerPFlagE" class="value"></div></div>
-<div class="row"><div class="label">c</div><div id="registerPFlagC" class="value"></div></div>
-<div class="row"><div class="label">z</div><div id="registerPFlagZ" class="value"></div></div>
-<div class="row"><div class="label">i</div><div id="registerPFlagI" class="value"></div></div>
-<div class="row"><div class="label">d</div><div id="registerPFlagD" class="value"></div></div>
-<div class="row"><div class="label">x</div><div id="registerPFlagX" class="value"></div></div>
-<div class="row"><div class="label">m</div><div id="registerPFlagM" class="value"></div></div>
-<div class="row"><div class="label">v</div><div id="registerPFlagV" class="value"></div></div>
-<div class="row"><div class="label">n</div><div id="registerPFlagN" class="value"></div></div>
+    <h3>P Register Flags</h3>
+    <div class="row"><div class="label">e</div><div id="registerPFlagE" class="value"></div></div>
+    <div class="row"><div class="label">c</div><div id="registerPFlagC" class="value"></div></div>
+    <div class="row"><div class="label">z</div><div id="registerPFlagZ" class="value"></div></div>
+    <div class="row"><div class="label">i</div><div id="registerPFlagI" class="value"></div></div>
+    <div class="row"><div class="label">d</div><div id="registerPFlagD" class="value"></div></div>
+    <div class="row"><div class="label">x</div><div id="registerPFlagX" class="value"></div></div>
+    <div class="row"><div class="label">m</div><div id="registerPFlagM" class="value"></div></div>
+    <div class="row"><div class="label">v</div><div id="registerPFlagV" class="value"></div></div>
+    <div class="row"><div class="label">n</div><div id="registerPFlagN" class="value"></div></div>
+</div>
+<div style="padding-top:1em">
+    <h3>Instruction lue : </h3>
+    <div id="instruction" class="value"></div>
+</div>
+<div style="padding-top:1em">
+    <h3>Détails : </h3>
+    <div id="translate"> </div> 
+    <div id="commentaire" class="value"></div> 
 </div>
 </div>
 <div class="right">
@@ -97,11 +133,8 @@ function updateFields() {
 <br/>
 <button id="execute">Execute</button>
 <button id="reset">Reset</button>
-<!--
-<button id="stop">Stop</button>
-<button id="pause">Pause</button>
+<button id="load">Load</button>
 <button id="step">Step</button>
--->
 </div>
 </body>
 </html>
