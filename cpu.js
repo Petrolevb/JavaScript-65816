@@ -16,6 +16,13 @@
 
 (function(window) {
 // A collection of helper functions.
+var bytesToString = function(bytes) {
+  var number = Number(bytes);
+  return (number < 16 ?
+    "0" + number.toString(16).toUpperCase() 
+    : number.toString(16).toUpperCase());
+}
+
 var cpu_lib = {
   r: {
     p: {
@@ -140,7 +147,7 @@ var cpu_lib = {
 
       this.execute = function(cpu, bytes) {
         cpu.cycle_count++;
-        cpu.instruction_details += "DP $" + bytes.toString(16);
+        cpu.instruction_details += "DP $" + bytesToString(bytes);
         if((cpu.r.d&0xff)!==0)
           cpu.cycle_count++;
 
@@ -3227,7 +3234,7 @@ var LDA_const= {
     }
   },
   execute: function(cpu, bytes) {
-    cpu.instruction_details += "Const #" + Number(bytes).toString(16).toUpperCase();
+    cpu.instruction_details += "Const #" + bytesToString(bytes);
     cpu.cycle_count+=2;
 
     if(cpu.p.e||cpu.p.m) {
@@ -3889,8 +3896,8 @@ window.CPU_65816 = function() {
       for(var i = 1; i < bytes_required; i++) {
         var bytes_read = this.mmu.read_byte_long(this.r.pc, this.r.k);
         bytes.push(bytes_read);
-        this.instruction += " " + bytes_read.toString(16).toUpperCase();
-        this.instruction_translate += " " + bytes_read.toString(16).toUpperCase();
+        this.instruction += " " + bytesToString(bytes_read);
+        this.instruction_translate += " " + bytesToString(bytes_read);
         this.r.pc++;
       }
       operation.execute(this,bytes);
