@@ -22,6 +22,7 @@ $(document).ready(function() {
     cpu.reset();
     $("#hex").val("");
     $("#step").attr("disabled", "disabled");
+    $("#execute").removeAttr("disabled");
     $("#load").removeAttr("disabled");
     updateFields();
   });
@@ -29,6 +30,7 @@ $(document).ready(function() {
     cpu.reset();
     cpu.load_binary($("#hex").val(), 0x8000);
     $("#load").attr("disabled", "disabled");
+    $("#execute").attr("disabled", "disabled");
     $("#step").removeAttr("disabled");
     updateFields();
   });

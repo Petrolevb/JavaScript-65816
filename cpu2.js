@@ -3773,7 +3773,8 @@ window.CPU_65816 = function() {
    */
   this.load_binary = function(raw_hex, memory_location_start, bank) {
     var byte_buffer = [],
-        i = 0;
+        i = 0,
+        starting_memory = memory_location_start;
 
     if(typeof bank === "undefined") {
       bank = 0;
@@ -3796,6 +3797,7 @@ window.CPU_65816 = function() {
         memory_location_start++;
       }
     }
+    this.r.pc = starting_memory;
   };
 
   /**
@@ -3934,7 +3936,7 @@ window.CPU_65816 = function() {
     this.instruction = "";
     this.instruction_translate = "";
     this.instruction_details = "";
-    
+
     this.interrupt = this.INTERRUPT.NO_INTERRUPT;
     this.r = { a:0, b:0, x:0, y:0, d:0, s:0xff, pc:0, dbr:0, k:0 };
     this.p = { e:1, c:0, z:0, i:0, d:0, x:0, m:0, v:0, n:0 };
