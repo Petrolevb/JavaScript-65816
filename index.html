@@ -71,6 +71,7 @@ function updateFields() {
   $("#instruction").text(cpu.instruction);
   $("#translate").text(cpu.instruction_translate)
   $("#commentaire").text(cpu.instruction_details);
+  $("#history").text(cpu.instruction_history);
 }
 </script>
 <style>
@@ -131,7 +132,11 @@ function updateFields() {
 <div style="padding-top:1em">
     <h3>Détails : </h3>
     <div id="translate"> </div> 
-    <div id="commentaire" class="value"></div> 
+    <div id="commentaire" class="value"></div>
+</div>
+<div style="padding-top:1em">
+  <h3>Historique</h3>
+  <div id="history"></div>
 </div>
 </div>
 <div class="right">

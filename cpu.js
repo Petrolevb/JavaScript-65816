@@ -3536,6 +3536,7 @@ window.CPU_65816 = function() {
   this.instruction = "";
   this.instruction_details = "";
   this.instruction_translate = "";
+  this.instruction_history = "";
 
   // Registers
   this.r = {
@@ -3880,6 +3881,7 @@ window.CPU_65816 = function() {
     this.instruction = b.toString(16).toUpperCase();
     var operation = this.opcode_map[b];
     this.instruction_translate = operation.toString();
+    this.instruction_history += " " + operation.toString();
 
     // bytes_required can either be a number, or a function that resolves
     // to a number using some aspect of the cpu.
@@ -3897,6 +3899,7 @@ window.CPU_65816 = function() {
         var bytes_read = this.mmu.read_byte_long(this.r.pc, this.r.k);
         bytes.push(bytes_read);
         this.instruction += " " + bytesToString(bytes_read);
+        this.instruction_history += " " + bytesToString(bytes_read);
         this.instruction_translate += " " + bytesToString(bytes_read);
         this.r.pc++;
       }
@@ -3947,6 +3950,7 @@ window.CPU_65816 = function() {
     this.instruction = "";
     this.instruction_translate = "";
     this.instruction_details = "";
+    this.instruction_history = "";
 
     this.interrupt = this.INTERRUPT.NO_INTERRUPT;
     this.r = { a:0, b:0, x:0, y:0, d:0, s:0xff, pc:0, dbr:0, k:0 };
