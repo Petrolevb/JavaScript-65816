@@ -147,7 +147,11 @@ var cpu_lib = {
 
       this.execute = function(cpu, bytes) {
         cpu.cycle_count++;
-        cpu.instruction_details += "DP $" + bytesToString(bytes);
+        cpu.instruction_translate = instruction.toString() + " $" + bytesToString(bytes);
+        cpu.instruction_translated = true;
+        cpu.instruction_details += "Direct Page addressing";
+        cpu.instruction_history += " " + instruction.toString() + " " + bytesToString(bytes);
+
         if((cpu.r.d&0xff)!==0)
           cpu.cycle_count++;
 
@@ -160,6 +164,7 @@ var cpu_lib = {
                                     cpu.mmu.read_byte(memory_location+1)],
                               {memory_location: memory_location});
         }
+        cpu.instruction_translated = false;
       };
     },
     Direct_page_indexed_x_indirect: function(instruction) {
@@ -3234,7 +3239,10 @@ var LDA_const= {
     }
   },
   execute: function(cpu, bytes) {
-    cpu.instruction_details += "Const #" + bytesToString(bytes);
+    if(!cpu.instruction_translated) {
+      cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " " + bytesToString(bytes);
+    }
     cpu.cycle_count+=2;
 
     if(cpu.p.e||cpu.p.m) {
@@ -3537,6 +3545,7 @@ window.CPU_65816 = function() {
   this.instruction_details = "";
   this.instruction_translate = "";
   this.instruction_history = "";
+  this.instruction_translated = false;
 
   // Registers
   this.r = {
@@ -3813,6 +3822,7 @@ window.CPU_65816 = function() {
    * location of the program counter.
    */
   this.step = function() {
+    this.instruction_translated = false;
     if(this.interrupt&&(!this.p.i||(this.interrupt===this.INTERRUPT.NMI))) {
       // Load the related interrupt vector in page 0xff of bank zero.
       if(!this.p.e) {
@@ -3881,7 +3891,11 @@ window.CPU_65816 = function() {
     this.instruction = b.toString(16).toUpperCase();
     var operation = this.opcode_map[b];
     this.instruction_translate = operation.toString();
-    this.instruction_history += " " + operation.toString();
+    
+    // Minus One on PC reg because we already read the current instruction
+    this.instruction_history
+      += bytesToString(this.r.k) + "/" + bytesToString(this.r.pc-1) + ": " 
+      + bytesToString(b);
 
     // bytes_required can either be a number, or a function that resolves
     // to a number using some aspect of the cpu.
@@ -3900,11 +3914,11 @@ window.CPU_65816 = function() {
         bytes.push(bytes_read);
         this.instruction += " " + bytesToString(bytes_read);
         this.instruction_history += " " + bytesToString(bytes_read);
-        this.instruction_translate += " " + bytesToString(bytes_read);
         this.r.pc++;
       }
       operation.execute(this,bytes);
     }
+    this.instruction_history += "<br />";
 
     if(this.waiting||this.stopped)
       this.executing = false;

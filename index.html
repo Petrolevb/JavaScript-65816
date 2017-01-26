@@ -71,7 +71,7 @@ function updateFields() {
   $("#instruction").text(cpu.instruction);
   $("#translate").text(cpu.instruction_translate)
   $("#commentaire").text(cpu.instruction_details);
-  $("#history").text(cpu.instruction_history);
+  $("#history").html(cpu.instruction_history);
 }
 </script>
 <style>
