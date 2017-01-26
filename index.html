@@ -1,5 +1,5 @@
 <html>
-<script src="cpu2.js">
+<script src="cpu.js">
 </script>
 <script src="lib/jquery-1.6.2.min.js">
 </script>
@@ -45,7 +45,12 @@ $(document).ready(function() {
   });
 });
 function updateFields() {
-  $("#registerA").text(cpu.r.a.toString(16));
+  if(cpu.r === 'undefined')
+  {
+    $("#registerA").text("R UNDEFINED");
+    return;
+  }
+  $("#registerA").text((cpu.r.a ? cpu.r.a.toString(16) : "0x00"));
   $("#registerB").text(cpu.r.b.toString(16));
   $("#registerX").text(cpu.r.x.toString(16));
   $("#registerY").text(cpu.r.y.toString(16));
@@ -131,11 +136,13 @@ function updateFields() {
 </div>
 <div class="right">
 <h3>Enter your program in hex here:</h3><textarea id="hex"></textarea>
-<br/>
-<button id="execute">Execute</button>
-<button id="reset">Reset</button>
+<br />
 <button id="load">Load</button>
 <button id="step" disabled="disabled">Step</button>
+<br/>
+<button id="execute">Execute all code</button>
+<br />
+<button id="reset">Reset</button>
 </div>
 </body>
 </html>

@@ -120,7 +120,6 @@ var cpu_lib = {
 
       this.execute = function(cpu, bytes, extra) {
         cpu.cycle_count+=4;
-
         if(cpu.p.e||cpu.p.m) {
           var temp = (bytes[0] + value) & 0xff;
           cpu.p.n = temp >> 7;
@@ -141,7 +140,7 @@ var cpu_lib = {
 
       this.execute = function(cpu, bytes) {
         cpu.cycle_count++;
-
+        cpu.instruction_details += "DP $" + bytes.toString(16);
         if((cpu.r.d&0xff)!==0)
           cpu.cycle_count++;
 
@@ -3228,6 +3227,7 @@ var LDA_const= {
     }
   },
   execute: function(cpu, bytes) {
+    cpu.instruction_details += "Const #" + Number(bytes).toString(16).toUpperCase();
     cpu.cycle_count+=2;
 
     if(cpu.p.e||cpu.p.m) {
@@ -3867,9 +3867,10 @@ window.CPU_65816 = function() {
     // If we reach the end of the code then stop everything.
     if(typeof b === "undefined") {
       this.executing = false;
+      this.instruction_details = "opcode b is undefined";
       return;
     }
-    this.instruction = b.toString(16);
+    this.instruction = b.toString(16).toUpperCase();
     var operation = this.opcode_map[b];
     this.instruction_translate = operation.toString();
 
@@ -3879,14 +3880,17 @@ window.CPU_65816 = function() {
     if(typeof bytes_required === 'function') {
       bytes_required = bytes_required(this);
     }
-    this.instruction_details = bytes_required + " bytes read";
+    this.instruction_details = bytes_required + " bytes read\n";
 
     if(bytes_required===1) {
       operation.execute(this);
     } else {
       var bytes = [];
       for(var i = 1; i < bytes_required; i++) {
-        bytes.push(this.mmu.read_byte_long(this.r.pc, this.r.k));
+        var bytes_read = this.mmu.read_byte_long(this.r.pc, this.r.k);
+        bytes.push(bytes_read);
+        this.instruction += " " + bytes_read.toString(16).toUpperCase();
+        this.instruction_translate += " " + bytes_read.toString(16).toUpperCase();
         this.r.pc++;
       }
       operation.execute(this,bytes);
