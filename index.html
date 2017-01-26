@@ -1,45 +1,46 @@
 <html>
-<script src="cpu.js">
+<script src="cpu2.js">
 </script>
 <script src="lib/jquery-1.6.2.min.js">
 </script>
 <script>
-var cpu;
+var cpu = new CPU_65816();
+
 $(document).ready(function() {
-  cpu = new CPU_65816();
+  
+  cpu.reset();
   updateFields(); 
-  var can_step = false;
+
   $("#execute").click(function() {
     cpu.reset();
-    cpu.execute($("#hex").val());
+    cpu.load_binary($("#hex").val(), 0x8000);
+    cpu.execute(0x8000);
     $("#load").removeAttr("disabled");
     updateFields();
   });
   $("#reset").click(function() {
     cpu.reset();
     $("#hex").val("");
-    updateFields();
     $("#step").attr("disabled", "disabled");
+    $("#execute").removeAttr("disabled");
     $("#load").removeAttr("disabled");
+    updateFields();
   });
   $("#load").click(function() {
     cpu.reset();
-    cpu.load_program($("#hex").val());
-    updateFields();
-    can_step = true;
-    $("#step").removeAttr("disabled");
+    cpu.load_binary($("#hex").val(), 0x8000);
     $("#load").attr("disabled", "disabled");
+    $("#execute").attr("disabled", "disabled");
+    $("#step").removeAttr("disabled");
+    updateFields();
   });
   $("#step").click(function() {
-    if(can_step) {
-      cpu.executing = true;
-      cpu.step();
-      if(!cpu.executing) {
-        can_step = false;
-        $("#step").attr("disabled", "disabled");
-        $("#load").removeAttr("disabled");
-      }
-      updateFields();
+    cpu.executing = true;
+    cpu.step();
+    updateFields();
+    if(!cpu.executing) {
+      $("#step").attr("disabled", "disabled");
+      $("#load").removeAttr("disabled");
     }
   });
 });
@@ -134,7 +135,7 @@ function updateFields() {
 <button id="execute">Execute</button>
 <button id="reset">Reset</button>
 <button id="load">Load</button>
-<button id="step">Step</button>
+<button id="step" disabled="disabled">Step</button>
 </div>
 </body>
 </html>
