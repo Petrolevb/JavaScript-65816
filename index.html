@@ -51,14 +51,14 @@ function updateFields() {
     return;
   }
   $("#registerA").text((cpu.r.a ? cpu.r.a.toString(16) : "0x00"));
-  $("#registerB").text(cpu.r.b.toString(16));
-  $("#registerX").text(cpu.r.x.toString(16));
-  $("#registerY").text(cpu.r.y.toString(16));
-  $("#registerD").text(cpu.r.d.toString(16));
-  $("#registerS").text(cpu.r.s.toString(16));
-  $("#registerPC").text(cpu.r.pc.toString(16));
-  $("#registerDBR").text(cpu.r.dbr.toString(16));
-  $("#registerK").text(cpu.r.k.toString(16));
+  $("#registerB").text((cpu.r.b ? cpu.r.b.toString(16): "0x00"));
+  $("#registerX").text((cpu.r.x ? cpu.r.x.toString(16): "0x00"));
+  $("#registerY").text((cpu.r.y ? cpu.r.y.toString(16): "0x00"));
+  $("#registerD").text((cpu.r.d ? cpu.r.d.toString(16): "0x00"));
+  $("#registerS").text((cpu.r.s ? cpu.r.s.toString(16): "0x00"));
+  $("#registerPC").text((cpu.r.pc ? cpu.r.pc.toString(16): "0x00"));
+  $("#registerDBR").text((cpu.r.dbr ? cpu.r.dbr.toString(16): "0x00"));
+  $("#registerK").text((cpu.r.k ? cpu.r.k.toString(16): "0x00"));
   $("#registerPFlagE").text(cpu.p.e);
   $("#registerPFlagC").text(cpu.p.c);
   $("#registerPFlagZ").text(cpu.p.z);
