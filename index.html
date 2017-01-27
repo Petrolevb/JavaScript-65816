@@ -70,7 +70,7 @@ function updateFields() {
   $("#registerPFlagN").text(cpu.p.n);
   $("#instruction").text(cpu.instruction);
   $("#translate").text(cpu.instruction_translate)
-  $("#commentaire").text(cpu.instruction_details);
+  $("#commentaire").html(cpu.instruction_details);
   $("#history").html(cpu.instruction_history);
 }
 </script>
