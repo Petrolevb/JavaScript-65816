@@ -2369,6 +2369,8 @@ var TYA = {
       cpu.p.n = cpu.r.a >> 15;
     }
     cpu_lib.r.p.check_z(cpu, cpu.r.a);
+    cpu.instruction_history += " TYA";
+    cpu.instruction_details += "<br />Transfer Y Register to Accumulator";
   }
 };
 
@@ -2402,6 +2404,8 @@ var TAY = {
     }
 
     cpu_lib.r.p.check_z(cpu, cpu.r.y);
+    cpu.instruction_history += " TAY";
+    cpu.instruction_details += "<br />Transfer Accumulator to Y Register";
   }
 };
 
@@ -2428,6 +2432,8 @@ var TXA = {
       cpu.p.n = cpu.r.a >> 15;
     }
     cpu_lib.r.p.check_z(cpu, cpu.r.a);
+    cpu.instruction_history += " TXA";
+    cpu.instruction_details += "<br />Transfer X Register to Accumulator";
   }
 };
 
@@ -2460,6 +2466,8 @@ var TAX = {
       }
     }
     cpu_lib.r.p.check_z(cpu, cpu.r.x);
+    cpu.instruction_history += " TAX";
+    cpu.instruction_details += "<br />Transfer Accumulator to X Register";
   }
 };
 
@@ -2477,6 +2485,8 @@ var TXY = {
     } else {
       cpu.p.n = cpu.r.y >> 15;
     }
+    cpu.instruction_history += " TXY";
+    cpu.instruction_details += "<br />Transfer X Register to Y Register";
   }
 };
 
@@ -2494,6 +2504,8 @@ var TYX = {
     } else {
       cpu.p.n = cpu.r.y >> 15;
     }
+    cpu.instruction_history += " TYX";
+    cpu.instruction_details += "<br />Transfer Y Register to X Register";
   }
 };
 
@@ -2514,6 +2526,8 @@ var TCD = {
     cpu.p.n = cpu.r.d >> 15;
 
     cpu_lib.r.p.check_z(cpu, cpu.r.d);
+    cpu.instruction_history += " TCD";
+    cpu.instruction_details += "<br />Transfer C acc. to Direct Register";
   }
 };
 
@@ -2535,6 +2549,8 @@ var TDC = {
     }
 
     cpu_lib.r.p.check_z(cpu, cpu.r.a);
+    cpu.instruction_history += " TDC";
+    cpu.instruction_details += "<br />Transfer Direct Register to C acc.";
   }
 };
 
@@ -2544,12 +2560,13 @@ var TCS = {
 
   execute:function(cpu) {
     cpu.cycle_count+=2;
-
     if(cpu.p.e||!cpu.p.m) {
       cpu.r.s = cpu.r.a;
     } else {
       cpu.r.s = (cpu.r.b<<8)|cpu.r.a;
     }
+    cpu.instruction_history += " TCS";
+    cpu.instruction_details += "<br />Transfer C acc. to Stack Pointer";
   }
 };
 
@@ -2579,6 +2596,8 @@ var TSC = {
 
       cpu_lib.r.p.check_z(cpu, cpu.r.s);
     }
+    cpu.instruction_history += " TSC";
+    cpu.instruction_details += "<br />Transfer Stack Pointer to C acc.";
   }
 };
 
