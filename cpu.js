@@ -58,6 +58,8 @@ var cpu_lib = {
         this.bytes_required = 1;
         this.execute = function(cpu) {
           cpu.cycle_count+=2;
+          cpu.instruction_details = "flag " + flag + " set to " + value;
+          //cpu.instruction_translated = true;
           cpu.p[flag] = value;
         };
       },
@@ -104,6 +106,10 @@ var cpu_lib = {
         value = 1;
 
       this.bytes_required = 1;
+
+      this.toString = function() {
+        return (value == 1 ? "IN" : "DE") + " reg" + register + " flg" + flag;
+      };
 
       this.execute = function(cpu) {
         cpu.cycle_count+=2;
