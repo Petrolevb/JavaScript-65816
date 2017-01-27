@@ -2874,6 +2874,8 @@ var NOP = {
 
   execute:function(cpu) {
     cpu.cycle_count+=2;
+    cpu.instruction_history += " NOP";
+    cpu.instruction_details += "<br />No OPeration"
   }
 };
 
