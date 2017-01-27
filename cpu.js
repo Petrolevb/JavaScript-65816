@@ -155,7 +155,6 @@ var cpu_lib = {
         cpu.cycle_count++;
         cpu.instruction_translate = instruction.toString() + " $" + bytesToString(bytes);
         cpu.instruction_translated = true;
-        cpu.instruction_details += "Direct Page addressing";
         cpu.instruction_history += " " + instruction.toString() + " " + bytesToString(bytes);
 
         if((cpu.r.d&0xff)!==0)
@@ -170,6 +169,7 @@ var cpu_lib = {
                                     cpu.mmu.read_byte(memory_location+1)],
                               {memory_location: memory_location});
         }
+        cpu.instruction_details += "<br />Direct Page addressing";
         cpu.instruction_translated = false;
       };
     },
@@ -2888,6 +2888,12 @@ var LDY_const= {
       return 3;
   },
   execute:function(cpu, bytes) {
+    cpu.instruction_details += "<br />Load value to register Y";
+    if(!cpu.instruction_translated) {
+      cpu.instruction_details += " (const)";
+      cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " " + bytesToString(bytes);
+    }
     cpu.cycle_count+=2;
 
     if(cpu.p.e||cpu.p.x) {
@@ -3266,7 +3272,9 @@ var LDA_const= {
     }
   },
   execute: function(cpu, bytes) {
+    cpu.instruction_details += "<br />Load value to accumulator";
     if(!cpu.instruction_translated) {
+      cpu.instruction_details += " (const)";
       cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
       cpu.instruction_history += " " + this.toString() + " " + bytesToString(bytes);
     }
@@ -3333,6 +3341,12 @@ var LDX_const= {
     }
   },
   execute: function(cpu, bytes) {
+    cpu.instruction_details += "<br />Load value to register X";
+    if(!cpu.instruction_translated) {
+      cpu.instruction_details += " (const)";
+      cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " " + bytesToString(bytes);
+    }
     cpu.cycle_count+=2;
 
     if(cpu.p.e||cpu.p.x) {
@@ -3930,7 +3944,7 @@ window.CPU_65816 = function() {
     if(typeof bytes_required === 'function') {
       bytes_required = bytes_required(this);
     }
-    this.instruction_details = bytes_required + " bytes read\n";
+    this.instruction_details = bytes_required + " bytes read";
 
     if(bytes_required===1) {
       operation.execute(this);
