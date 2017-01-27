@@ -1,0 +1,526 @@
+Code complet : 
+1B3B5B7B8A989BA8AABB
+
+Explications :
+
+0x00
+0x01
+0x02
+0x03
+0x04
+0x05
+0x06
+0x07
+0x08
+0x09
+0x0A
+0x0B
+0x0C
+0x0D
+0x0E
+0x0F
+
+0x10
+0x11
+0x12
+0x13
+0x14
+0x15
+0x16
+0x17
+0x18
+0x19
+0x1A
+0x1B 	TCS
+0x1C
+0x1D
+0x1E
+0x1F
+
+0x20
+0x21
+0x22
+0x23
+0x24
+0x25
+0x26
+0x27
+0x28
+0x29
+0x2A
+0x2B
+0x2C
+0x2D
+0x2E
+0x2F
+
+0x30
+0x31
+0x32
+0x33
+0x34
+0x35
+0x36
+0x37
+0x38
+0x39
+0x3A
+0x3B 	TSC
+0x3C
+0x3D
+0x3E
+0x3F
+
+0x40
+0x41
+0x42
+0x43
+0x44
+0x45
+0x46
+0x47
+0x48
+0x49
+0x4A
+0x4B
+0x4C
+0x4D
+0x4E
+0x4F
+
+0x50
+0x51
+0x52
+0x53
+0x54
+0x55
+0x56
+0x57
+0x58
+0x59
+0x5A
+0x5B 	TCD
+0x5C
+0x5D
+0x5E
+0x5F
+
+0x60
+0x61
+0x62
+0x63
+0x64
+0x65
+0x66
+0x67
+0x68
+0x69
+0x6A
+0x6B
+0x6C
+0x6D
+0x6E
+0x6F
+
+0x70
+0x71
+0x72
+0x73
+0x74
+0x75	
+0x76	
+0x77	
+0x78	
+0x79
+0x7A
+0x7B 	TDC
+0x7C
+0x7D
+0x7E
+0x7F
+
+0x80
+0x81
+0x82
+0x83
+0x84
+0x85
+0x86
+0x87
+0x88
+0x89
+0x8A 	TXA
+0x8B
+0x8C
+0x8D
+0x8E
+0x8F
+
+0x90
+0x91
+0x92
+0x93
+0x94
+0x95
+0x96
+0x97
+0x98 	TYA
+0x99
+0x9A
+0x9B 	TXY
+0x9C
+0x9D
+0x9E
+0x9F
+
+0xA0
+0xA1
+0xA2
+0xA3
+0xA4
+0xA5
+0xA6
+0xA7
+0xA8 	TAY
+0xA9
+0xAA 	TAX
+0xAB
+0xAC
+0xAD
+0xAE
+0xAF
+
+0xB0
+0xB1
+0xB2
+0xB3
+0xB4
+0xB5
+0xB6
+0xB7
+0xB8
+0xB9
+0xBA
+0xBB 	TYX
+0xBC
+0xBD
+0xBE
+0xBF
+
+0xC0
+0xC1
+0xC2
+0xC3
+0xC4
+0xC5
+0xC6
+0xC7
+0xC8
+0xC9
+0xCA
+0xCB
+0xCC
+0xCD
+0xCE
+0xCF
+
+0xD0
+0xD1
+0xD2
+0xD3
+0xD4
+0xD5
+0xD6
+0xD7
+0xD8
+0xD9
+0xDA
+0xDB
+0xDC
+0xDD
+0xDE
+0xDF
+
+0xE0
+0xE1
+0xE2
+0xE3
+0xE4
+0xE5
+0xE6
+0xE7
+0xE8
+0xE9
+0xEA
+0xEB
+0xEC
+0xED
+0xEE
+0xEF
+
+0xF0
+0xF1
+0xF2
+0xF3
+0xF4
+0xF5
+0xF6
+0xF7
+0xF8
+0xF9
+0xFA
+0xFB
+0xFC
+0xFD
+0xFE
+0xFF
+
+ADC - add with carry 
+AND - logical AND 
+BCC - branch if carry clear 
+BCS - branch if carry set 
+BEQ - branch if equal 
+BIT - bit test 
+BMI - branch if minus 
+BNE - branch if not equal 
+BPL - branch if plus 
+BRA - branch always 
+BRK - break point instruction 
+BVC - branch if overflow clear 
+BVS - branch if overflow set 
+CLC - clear the carry flag 
+CLD - clear the decimal flag 
+CLI - clear the interrupt flag 
+CLP - clear bits in P 
+CLR - store a zero into memory 
+CMP - compare accumulator 
+CPX - compare x register 
+CPY - compare y register 
+CSP - call system procedure 
+DEC - decrement acc or memory 
+DEX - decrement x register 
+DEY - decrement y register 
+EOR - exclusive-or accumulator 
+HLT - halt (stop) the clock 
+INC - increment acc or memory 
+INX - increment x register 
+INY - increment y register 
+JMP - jump to new location 
+JSR - jump to subroutine 
+LDA - load accumulator 
+LDX - load x register 
+LDY - load y register 
+MVN - block move (decrement) 
+MVP - block move (increment) 
+NOP - no operation 
+ORA - logical or accumulator 
+PHA - push accumulator 
+PHP - push p 
+PHX - push x register 
+PHY - push y register 
+PLA - pop accumulator 
+PLP - pop p 
+PLX - pop x register 
+PLY - pop y register 
+PSH - push operand 
+PUL - pop operand 
+RET - return from subroutine 
+ROL - rotate left acc/mem 
+ROR - rotate right acc/mem 
+RTI - return from interrupt 
+RTL - return from long subroutine 
+RTS - return from short subroutine 
+SBC - subtract with carry 
+SED - set decimal flag 
+SEI - set interrupt flag 
+SEP - set bits in P 
+SHL - shift left acc/mem 
+SHR - shift right acc/mem 
+STA - store accumulator 
+STX - store x register 
+STY - store y register 
+SWA - swap accumulator halves 
+TAD - transfer acc to D 
+TAS - transfer acc to S 
+TAX - transfer acc to x 
+TAY - transfer acc to y 
+TCB - test and clear bit 
+TDA - transfer D to acc 
+TSA - transfer S to acc 
+TSB - test and set bit 
+TSX - transfer S to X 
+TXA - transfer x to acc 
+TXS - transfer x to S 
+TXY - transfer x to y 
+TYA - transfer y to acc 
+TYX - transfer y to x 
+WAI - wait for interrupt 
+XCE - exchange carry with emulation bit 
+
+0xfb : XCE, 0x18 : CLC, 0x78 : SEI, 0x38 : SEC,
+0x58 : CLI, 0xc2 : REP, 0xe2 : SEP, 0xd8 : CLD,
+0xf8 : SED, 0xb8 : CLV, 0xeb : XBA, 0xa9 : LDA_const,
+0xad : LDA_absolute, 0xaf : LDA_absolute_long,
+0xbf : LDA_absolute_long_indexed_x,
+0xa5 : LDA_direct_page, 0xbd : LDA_absolute_indexed_x,
+0xb5 : LDA_direct_page_indexed_x,
+0xb9 : LDA_absolute_indexed_y,
+0xa1 : LDA_direct_page_indexed_x_indirect,
+0xb2 : LDA_direct_page_indirect,
+0xa7 : LDA_direct_page_indirect_long,
+0xb7 : LDA_direct_page_indirect_long_indexed_y,
+0xb1 : LDA_direct_page_indirect_indexed_y,
+0xa3 : LDA_stack_relative,
+0xb3 : LDA_stack_relative_indirect_indexed_y,
+0xa2 : LDX_const,
+0xae : LDX_absolute, 0xa6 : LDX_direct_page,
+0xa0 : LDY_const, 0xbc : LDY_absolute_indexed_x,
+0xb4 : LDY_direct_page_indexed_x,
+0xbe : LDX_absolute_indexed_y,
+0xb6 : LDX_direct_page_indexed_y,
+0xac : LDY_absolute, 0xa4 : LDY_direct_page, 0xea : NOP,
+0x8d : STA_absolute, 0x85 : STA_direct_page,
+0x8f : STA_absolute_long,
+0x9f : STA_absolute_long_indexed_x,
+0x81 : STA_direct_page_indexed_x_indirect,
+0x92 : STA_direct_page_indirect,
+0x87 : STA_direct_page_indirect_long,
+0x97 : STA_direct_page_indirect_long_indexed_y,
+0x91 : STA_direct_page_indirect_indexed_y,
+0x9d : STA_absolute_indexed_x,
+0x99 : STA_absolute_indexed_y,
+0x95 : STA_direct_page_indexed_x,
+0x83 : STA_stack_relative,
+0x93 : STA_stack_relative_indirect_indexed_y,
+0x8e : STX_absolute, 0x86 : STX_direct_page,
+0x96 : STX_direct_page_indexed_y,
+0x8c : STY_absolute, 0x84 : STY_direct_page,
+0x94 : STY_direct_page_indexed_x,
+0x1a : INC_accumulator, 0xe6 : INC_direct_page,
+0xee : INC_absolute, 0xf6 : INC_direct_page_indexed_x,
+0xfe : INC_absolute_indexed_x,
+0xe8 : INX, 0xc8 : INY,
+0x3a : DEC_accumulator, 0xce : DEC_absolute,
+0xde : DEC_absolute_indexed_x,
+0xc6 : DEC_direct_page, 0xca : DEX, 0x88 : DEY,
+0xd6 : DEC_direct_page_indexed_x,
+0x9c : STZ_absolute, 0x64 : STZ_direct_page,
+0x9e : STZ_absolute_indexed_x,
+0x74 : STZ_direct_page_indexed_x, , 0x4c : JMP_absolute,
+0x5c : JMP_absolute_long,
+0xdc : JMP_absolute_indirect_long,
+0x7c : JMP_absolute_indexed_x_indirect,
+0x6c : JMP_absolute_indirect, 0x80 : BRA, 0x82 : BRL,
+0xf0 : BEQ, 0xd0 : BNE, 0x90 : BCC, 0xb0 : BCS,
+0x50 : BVC, 0x70 : BVS, 0x10 : BPL, 0x30 : BMI,
+0x69 : ADC_const, 0x6d : ADC_absolute,
+0x61 : ADC_direct_page_indexed_x_indirect,
+0x6f : ADC_absolute_long,
+0x7f : ADC_absolute_long_indexed_x,
+0x65 : ADC_direct_page, 0x72 : ADC_direct_page_indirect,
+0x67 : ADC_direct_page_indirect_long,
+0x77 : ADC_direct_page_indirect_long_indexed_y,
+0x71 : ADC_direct_page_indirect_indexed_y,
+0x7d : ADC_absolute_indexed_x,
+0x79 : ADC_absolute_indexed_y,
+0x75 : ADC_direct_page_indexed_x,
+0x63 : ADC_stack_relative,
+0x73 : ADC_stack_relative_indirect_indexed_y,
+0xe9 : SBC_const,
+0xed : SBC_absolute, 0xe5 : SBC_direct_page,
+0xef : SBC_absolute_long,
+0xff : SBC_absolute_long_indexed_x,
+0xf2 : SBC_direct_page_indirect,
+0xe1 : SBC_direct_page_indexed_x_indirect,
+0xe7 : SBC_direct_page_indirect_long,
+0xf7 : SBC_direct_page_indirect_long_indexed_y,
+0xf1 : SBC_direct_page_indirect_indexed_y,
+0xfd : SBC_absolute_indexed_x,
+0xf9 : SBC_absolute_indexed_y,
+0xf5 : SBC_direct_page_indexed_x,
+0xe3 : SBC_stack_relative,
+0xf3 : SBC_stack_relative_indirect_indexed_y,
+0xc9 : CMP_const, 0xc5 : CMP_direct_page,
+0xcd : CMP_absolute, 0xd2 : CMP_direct_page_indirect,
+0xcf : CMP_absolute_long,
+0xdf : CMP_absolute_long_indexed_x,
+0xc7 : CMP_direct_page_indirect_long,
+0xd7 : CMP_direct_page_indirect_long_indexed_y,
+0xd5 : CMP_direct_page_indexed_x,
+0xc1 : CMP_direct_page_indexed_x_indirect,
+0xdd : CMP_absolute_indexed_x,
+0xd9 : CMP_absolute_indexed_y,
+0xd1 : CMP_direct_page_indirect_indexed_y,
+0xc3 : CMP_stack_relative,
+0xd3 : CMP_stack_relative_indirect_indexed_y,
+0xe0 : CPX_const,
+0xec : CPX_absolute, 0xe4 : CPX_direct_page,
+0xc0 : CPY_const, 0xcc : CPY_absolute,
+0xc4 : CPY_direct_page, 0x29 : AND_const,
+0x2d : AND_absolute, 0x25 : AND_direct_page,
+0x2f : AND_absolute_long,
+0x3f : AND_absolute_long_indexed_x,
+0x21 : AND_direct_page_indexed_x_indirect,
+0x32 : AND_direct_page_indirect,
+0x27 : AND_direct_page_indirect_long,
+0x37 : AND_direct_page_indirect_long_indexed_y,
+0x31 : AND_direct_page_indirect_indexed_y,
+0x3d : AND_absolute_indexed_x,
+0x39 : AND_absolute_indexed_y,
+0x35 : AND_direct_page_indexed_x,
+0x23 : AND_stack_relative,
+0x33 : AND_stack_relative_indirect_indexed_y,
+0x09 : ORA_const, 0x0f : ORA_absolute_long,
+0x0d : ORA_absolute, 0x05 : ORA_direct_page,
+0x1f : ORA_absolute_long_indexed_x,
+0x12 : ORA_direct_page_indirect,
+0x01 : ORA_direct_page_indexed_x_indirect,
+0x07 : ORA_direct_page_indirect_long,
+0x17 : ORA_direct_page_indirect_long_indexed_y,
+0x11 : ORA_direct_page_indirect_indexed_y,
+0x1d : ORA_absolute_indexed_x,
+0x19 : ORA_absolute_indexed_y,
+0x15 : ORA_direct_page_indexed_x,
+0x03 : ORA_stack_relative,
+0x13 : ORA_stack_relative_indirect_indexed_y,
+0x49 : EOR_const, 0x4d : EOR_absolute,
+0x4f : EOR_absolute_long,
+0x5f : EOR_absolute_long_indexed_x,
+0x45 : EOR_direct_page,
+0x52 : EOR_direct_page_indirect,
+0x41 : EOR_direct_page_indexed_x_indirect,
+0x47 : EOR_direct_page_indirect_long,
+0x57 : EOR_direct_page_indirect_long_indexed_y,
+0x51 : EOR_direct_page_indirect_indexed_y,
+0x5d : EOR_absolute_indexed_x,
+0x59 : EOR_absolute_indexed_y,
+0x55 : EOR_direct_page_indexed_x,
+0x43 : EOR_stack_relative,
+0x53 : EOR_stack_relative_indirect_indexed_y,
+0x4a : LSR_accumulator, 0x4e : LSR_absolute,
+0x46 : LSR_direct_page, 0x5e : LSR_absolute_indexed_x,
+0x56 : LSR_direct_page_indexed_x, 0x0a : ASL_accumulator,
+0x0e : ASL_absolute, 0x06 : ASL_direct_page,
+0x1e : ASL_absolute_indexed_x,
+0x16 : ASL_direct_page_indexed_x, 0x2a : ROL_accumulator,
+0x2e : ROL_absolute, 0x26 : ROL_direct_page,
+0x3e : ROL_absolute_indexed_x,
+0x36 : ROL_direct_page_indexed_x, 0x6a : ROR_accumulator,
+0x6e : ROR_absolute, 0x66 : ROR_direct_page,
+0x7e : ROR_absolute_indexed_x,
+0x76 : ROR_direct_page_indexed_x,
+0x48 : PHA, 0x68 : PLA, 0x5a : PHY, 0x7a : PLY,
+0xda : PHX, 0xfa : PLX, 0x08 : PHP, 0x28 : PLP,
+0xf4 : PEA, 0xd4 : PEI, 0x8b : PHB, 0xab : PLB,
+0x4b : PHK, 0x0b : PHD, 0x2b : PLD, 0x62 : PER,
+0x20 : JSR, 0xfc : JSR_absolute_indexed_x_indirect,
+0x60 : RTS, 0x22 : JSL, 0x6b : RTL,
+0x54 : MVN, 0x44 : MVP, 0x00 : BRK, 0x40 : RTI,
+0x02 : COP, 0x89 : BIT_const, 0x2c : BIT_absolute,
+0x24 : BIT_direct_page,
+0x3c : BIT_absolute_indexed_x,
+0x34 : BIT_direct_page_indexed_x,
+0x0c : TSB_absolute, 0x04 : TSB_direct_page,
+0x1c : TRB_absolute, 0x14 : TRB_direct_page,
+0x9a : TXS, 0xba : TSX, 0x42: WDM, 0xcb : WAI,
+0xdb : STP
