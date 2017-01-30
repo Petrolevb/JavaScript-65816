@@ -674,6 +674,12 @@ var BIT_const = {
       return 3;
   },
   execute:function(cpu, bytes) {
+    cpu.instruction_details += "<br />BIT test between value and accumulator";
+    if(!cpu.instruction_translated) {
+      cpu.instruction_details += " (const)";
+      cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " #" + bytesToString(bytes);
+    }
     cpu.cycle_count+=2;
 
     var and_result;
@@ -1579,6 +1585,12 @@ var EOR_const = {
     }
   },
   execute:function(cpu, bytes) {
+    cpu.instruction_details += "<br />Exclusive OR with accumulator";
+    if(!cpu.instruction_translated) {
+      cpu.instruction_details += " (const)";
+      cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " #" + bytesToString(bytes);
+    }
     cpu.cycle_count+=2;
 
     if(cpu.p.e||cpu.p.m) {
@@ -1642,6 +1654,12 @@ var ORA_const= {
     }
   },
   execute:function(cpu, bytes) {
+    cpu.instruction_details += "<br />OR with accumulator";
+    if(!cpu.instruction_translated) {
+      cpu.instruction_details += " (const)";
+      cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " #" + bytesToString(bytes);
+    }
     cpu.cycle_count+=2;
 
     if(cpu.p.e||cpu.p.m) {
@@ -1706,6 +1724,12 @@ var AND_const= {
     }
   },
   execute:function(cpu, bytes) {
+    cpu.instruction_details += "<br />AND with accumulator";
+    if(!cpu.instruction_translated) {
+      cpu.instruction_details += " (const)";
+      cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " #" + bytesToString(bytes);
+    }
     cpu.cycle_count+=2;
 
     if(cpu.p.e||cpu.p.m) {
@@ -1770,6 +1794,12 @@ var CPX_const= {
     }
   },
   execute:function(cpu, bytes) {
+    cpu.instruction_details += "<br />Compare value with X register";
+    if(!cpu.instruction_translated) {
+      cpu.instruction_details += " (const)";
+      cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " #" + bytesToString(bytes);
+    }
     cpu.cycle_count+=2;
 
     var result;
@@ -1813,6 +1843,12 @@ var CPY_const= {
     }
   },
   execute:function(cpu, bytes) {
+    cpu.instruction_details += "<br />Compare value with Y register";
+    if(!cpu.instruction_translated) {
+      cpu.instruction_details += " (const)";
+      cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " #" + bytesToString(bytes);
+    }
     cpu.cycle_count+=2;
 
     var result;
@@ -1855,6 +1891,12 @@ var CMP_const= {
     }
   },
   execute:function(cpu, bytes) {
+    cpu.instruction_details += "<br />Compare value with accumulator";
+    if(!cpu.instruction_translated) {
+      cpu.instruction_details += " (const)";
+      cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " #" + bytesToString(bytes);
+    }
     cpu.cycle_count+=2;
 
     var result;
@@ -1932,6 +1974,12 @@ var SBC_const= {
     }
   },
   execute:function(cpu, bytes) {
+    cpu.instruction_details += "<br />Substract value from accumulator";
+    if(!cpu.instruction_translated) {
+      cpu.instruction_details += " (const)";
+      cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " #" + bytesToString(bytes);
+    }
     cpu.cycle_count+=2;
 
     var old_a = cpu.r.a,
@@ -2093,6 +2141,12 @@ var ADC_const = {
     }
   },
   execute:function(cpu, bytes) {
+    cpu.instruction_details += "<br />Add with cary value to accumulator";
+    if(!cpu.instruction_translated) {
+      cpu.instruction_details += " (const)";
+      cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " #" + bytesToString(bytes);
+    }
     var old_a = cpu.r.a;
     if(cpu.p.e||cpu.p.m) {
       cpu.cycle_count+=2;
@@ -2892,7 +2946,7 @@ var LDY_const= {
     if(!cpu.instruction_translated) {
       cpu.instruction_details += " (const)";
       cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
-      cpu.instruction_history += " " + this.toString() + " " + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " #" + bytesToString(bytes);
     }
     cpu.cycle_count+=2;
 
@@ -3276,7 +3330,7 @@ var LDA_const= {
     if(!cpu.instruction_translated) {
       cpu.instruction_details += " (const)";
       cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
-      cpu.instruction_history += " " + this.toString() + " " + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " #" + bytesToString(bytes);
     }
     cpu.cycle_count+=2;
 
@@ -3345,7 +3399,7 @@ var LDX_const= {
     if(!cpu.instruction_translated) {
       cpu.instruction_details += " (const)";
       cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
-      cpu.instruction_history += " " + this.toString() + " " + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " #" + bytesToString(bytes);
     }
     cpu.cycle_count+=2;
 
