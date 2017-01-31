@@ -17,10 +17,21 @@
 (function(window) {
 // A collection of helper functions.
 var bytesToString = function(bytes) {
-  var number = Number(bytes);
-  return (number < 16 ?
-    "0" + number.toString(16).toUpperCase() 
-    : number.toString(16).toUpperCase());
+
+  if( Object.prototype.toString.call(bytes) === '[object Array]' )  {
+      var sReturn = "";
+      var number;
+      for(var i = bytes.length-1; i >= 0; i--) {
+          number = Number(bytes[i]);
+          sReturn += (number < 16 ? "0" : "")
+                  + number.toString(16).toUpperCase();
+      }
+      return sReturn;
+  } else { 
+      number = Number(bytes);
+      return (number < 16 ? "0" : "")
+             + number.toString(16).toUpperCase();
+  }
 }
 
 var cpu_lib = {
@@ -1430,6 +1441,12 @@ var ASL_absolute = {
   bytes_required:3,
 
   execute:function(cpu, bytes) {
+    cpu.instruction_details += "<br />Shift Accumulator with value";
+    if(!cpu.instruction_translated) {
+      cpu.instruction_details += " (const)";
+      cpu.instruction_translate = this.toString() + " #" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " #" + bytesToString(bytes);
+    }
     cpu.cycle_count+=6;
 
     var memory_location = (bytes[1]<<8)|bytes[0],
@@ -1460,6 +1477,12 @@ var ASL_direct_page = {
   bytes_required:2,
 
   execute:function(cpu,bytes) {
+    cpu.instruction_details += "<br />Shift Accumulator with value";
+    if(!cpu.instruction_translated) {
+      cpu.instruction_details += "<br /> Direct Page addressing";
+      cpu.instruction_translate = this.toString() + " $" + bytesToString(bytes);
+      cpu.instruction_history += " " + this.toString() + " $" + bytesToString(bytes);
+    }
     cpu.cycle_count+=5;
 
     if((cpu.r.d&0xff)!==0)
