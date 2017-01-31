@@ -155,7 +155,7 @@ var cpu_lib = {
         cpu.cycle_count++;
         cpu.instruction_translate = instruction.toString() + " $" + bytesToString(bytes);
         cpu.instruction_translated = true;
-        cpu.instruction_history += " " + instruction.toString() + " " + bytesToString(bytes);
+        cpu.instruction_history += " " + instruction.toString() + " $" + bytesToString(bytes);
 
         if((cpu.r.d&0xff)!==0)
           cpu.cycle_count++;
